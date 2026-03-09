@@ -49,20 +49,20 @@ export default function FoodCard({ item, onTap, onLongPress, showKcal = true }: 
       onMouseDown={startPress}
       onMouseUp={cancelPress}
       onMouseLeave={cancelPress}
-      className="bg-white rounded-xl shadow-sm border border-slate-100 px-2 py-2 flex items-center gap-2 active:scale-[0.98] transition-transform w-full text-left"
+      className="group bg-neutral-850 hover:bg-neutral-800 rounded-xl px-2.5 py-2 flex items-center gap-2.5 active:scale-[0.97] transition-all duration-150 w-full text-left border border-neutral-800 hover:border-neutral-700"
     >
       {imgUrl ? (
-        <img src={imgUrl} alt={item.name} className="w-9 h-9 rounded-lg object-cover shrink-0" />
+        <img src={imgUrl} alt={item.name} className="w-9 h-9 rounded-lg object-cover shrink-0 ring-1 ring-neutral-700" />
       ) : (
-        <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-lg shrink-0">
-          🍽️
+        <div className="w-9 h-9 rounded-lg bg-neutral-800 flex items-center justify-center text-lg shrink-0 ring-1 ring-neutral-700">
+          <span className="opacity-50">+</span>
         </div>
       )}
-      <span className="font-medium text-xs text-slate-700 leading-tight line-clamp-1 flex-1 min-w-0">
+      <span className="font-medium text-xs text-neutral-300 group-hover:text-neutral-200 leading-tight line-clamp-1 flex-1 min-w-0 transition-colors">
         {item.name}
       </span>
       {showKcal && (
-        <span className="text-[10px] text-slate-400 shrink-0">{item.kcal}</span>
+        <span className="text-[10px] text-neutral-500 font-medium tabular-nums shrink-0">{item.kcal}</span>
       )}
     </button>
   );

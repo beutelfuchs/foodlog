@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { todayKey, dayKeyFor } from '../utils/dates';
@@ -47,7 +47,6 @@ export default function LogPage({ showToast }: LogPageProps) {
   );
   const allEntries = useLiveQuery(() => db.logEntries.toArray());
 
-  // Sort foods by frequency + recency
   const sortedFoods = (() => {
     if (!foodItems || !allEntries) return foodItems ?? [];
     const freq = new Map<number, number>();
@@ -69,7 +68,6 @@ export default function LogPage({ showToast }: LogPageProps) {
   const thisWeekKcal = thisWeekEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
   const lastWeekKcal = lastWeekEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
 
-  // Group today's entries by food
   const grouped: GroupedEntry[] = (() => {
     if (!todayEntries) return [];
     const map = new Map<number, GroupedEntry>();
@@ -145,48 +143,50 @@ export default function LogPage({ showToast }: LogPageProps) {
     showToast('Deleted');
   }
 
-  // Show form overlay
   if (adding || editing) {
     return (
-      <div className="p-4">
-        <FoodForm
-          initial={editing ?? undefined}
-          onSave={editing ? handleUpdateFood : handleAddFood}
-          onCancel={() => { setAdding(false); setEditing(null); }}
-          onDelete={editing ? handleDeleteFood : undefined}
-        />
-      </div>
+      <SwipeToCancel onCancel={() => { setAdding(false); setEditing(null); }}>
+        <div className="p-4 h-full overflow-y-auto">
+          <FoodForm
+            initial={editing ?? undefined}
+            onSave={editing ? handleUpdateFood : handleAddFood}
+            onCancel={() => { setAdding(false); setEditing(null); }}
+            onDelete={editing ? handleDeleteFood : undefined}
+          />
+        </div>
+      </SwipeToCancel>
     );
   }
 
   return (
     <div className="flex h-full">
       {/* Left column: Today's log */}
-      <div className="w-1/2 border-r border-slate-100 overflow-y-auto p-3 space-y-2">
-        <div className="pb-2 space-y-1">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600">{totalKcal}</div>
-            <div className="text-xs text-slate-400">kcal today</div>
+      <div className="w-1/2 border-r border-neutral-800/80 overflow-y-auto p-3 space-y-3">
+        {/* Kcal hero */}
+        <div className="text-center py-2">
+          <div className="font-[family-name:var(--font-display)] text-4xl text-cyan-400 leading-none"
+               style={{ textShadow: '0 0 30px rgba(251,191,36,0.15)' }}>
+            {totalKcal}
           </div>
-          <div className="grid grid-cols-3 gap-1 text-center">
-            <div className="bg-slate-50 rounded-lg py-1">
-              <div className="text-sm font-semibold text-slate-600">{yesterdayKcal}</div>
-              <div className="text-[10px] text-slate-400">yesterday</div>
-            </div>
-            <div className="bg-slate-50 rounded-lg py-1">
-              <div className="text-sm font-semibold text-slate-600">{thisWeekKcal}</div>
-              <div className="text-[10px] text-slate-400">this week</div>
-            </div>
-            <div className="bg-slate-50 rounded-lg py-1">
-              <div className="text-sm font-semibold text-slate-600">{lastWeekKcal}</div>
-              <div className="text-[10px] text-slate-400">last week</div>
-            </div>
-          </div>
+          <div className="text-[10px] text-neutral-500 uppercase tracking-[0.2em] mt-1 font-medium">kcal today</div>
         </div>
 
+        {/* Mini stats row */}
+        <div className="grid grid-cols-3 gap-1.5">
+          <MiniStat value={yesterdayKcal} label="yesterday" />
+          <MiniStat value={thisWeekKcal} label="this week" />
+          <MiniStat value={lastWeekKcal} label="last week" />
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-gradient-to-r from-transparent via-neutral-700 to-transparent" />
+
+        {/* Log entries */}
         {grouped.length === 0 ? (
-          <div className="text-center text-slate-300 py-8 text-sm">
-            Tap a food to log it
+          <div className="text-center py-8">
+            <div className="text-neutral-600 text-sm italic font-[family-name:var(--font-display)]">
+              Tap a food to log it
+            </div>
           </div>
         ) : (
           <div className="space-y-1">
@@ -206,18 +206,20 @@ export default function LogPage({ showToast }: LogPageProps) {
       {/* Right column: Catalogue */}
       <div className="w-1/2 overflow-y-auto p-3 space-y-2">
         <div className="flex items-center justify-between pb-1">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Catalogue</span>
+          <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.2em]">Catalogue</span>
           <button
             onClick={() => setAdding(true)}
-            className="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-xl font-light shadow-md active:bg-green-700"
+            className="bg-cyan-500 hover:bg-cyan-400 text-neutral-900 rounded-full w-7 h-7 flex items-center justify-center text-lg font-light shadow-lg shadow-cyan-500/20 active:scale-90 transition-all"
           >
             +
           </button>
         </div>
 
         {sortedFoods.length === 0 ? (
-          <div className="text-center text-slate-300 py-8 text-sm">
-            Tap + to add food
+          <div className="text-center py-8">
+            <div className="text-neutral-600 text-sm italic font-[family-name:var(--font-display)]">
+              Tap + to add food
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
@@ -232,6 +234,15 @@ export default function LogPage({ showToast }: LogPageProps) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function MiniStat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="bg-neutral-900 rounded-lg py-1.5 text-center border border-neutral-800">
+      <div className="text-sm font-semibold text-neutral-300 tabular-nums">{value}</div>
+      <div className="text-[9px] text-neutral-600 uppercase tracking-wider font-medium">{label}</div>
     </div>
   );
 }
@@ -314,38 +325,68 @@ function SwipeableLogRow({
 
   return (
     <div className="relative overflow-hidden rounded-lg">
+      {/* Swipe background hints */}
       <div className="absolute inset-0 flex items-center justify-between px-3">
-        <div className="text-red-400 font-semibold text-xs">−</div>
-        <div className="text-green-500 font-semibold text-xs">+</div>
+        <div className="text-rose-400/60 font-semibold text-xs">-</div>
+        <div className="text-emerald-400/60 font-semibold text-xs">+</div>
       </div>
+
       <div
         ref={rowRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleMouseDown}
-        className="relative bg-white rounded-lg px-2 py-2 flex items-center justify-between shadow-sm border border-slate-100 z-10 select-none cursor-grab active:cursor-grabbing"
+        className="relative bg-neutral-850 rounded-lg px-2 py-2 flex items-center justify-between border border-neutral-800 z-10 select-none cursor-grab active:cursor-grabbing"
       >
         <div className="flex items-center gap-1.5">
           <button
             onClick={(e) => { e.stopPropagation(); onSwipeLeft(); }}
-            className="w-6 h-6 rounded-full bg-red-50 text-red-400 font-bold text-sm flex items-center justify-center"
-          >−</button>
-          <span className="font-medium text-xs">{food?.name ?? '...'}</span>
+            className="w-6 h-6 rounded-full bg-rose-500/10 text-rose-400 font-bold text-sm flex items-center justify-center border border-rose-500/20 hover:bg-rose-500/20 transition-colors"
+          >-</button>
+          <span className="font-medium text-xs text-neutral-300">{food?.name ?? '...'}</span>
           {group.count > 1 && (
-            <span className="bg-green-100 text-green-700 text-[10px] font-bold rounded-full px-1.5 py-0.5">
-              ×{group.count}
+            <span className="bg-cyan-500/15 text-cyan-400 text-[10px] font-bold rounded-full px-1.5 py-0.5 border border-cyan-500/20">
+              x{group.count}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 text-xs">{group.totalKcal}</span>
+          <span className="text-neutral-500 text-xs tabular-nums">{group.totalKcal}</span>
           <button
             onClick={(e) => { e.stopPropagation(); onSwipeRight(); }}
-            className="w-6 h-6 rounded-full bg-green-50 text-green-600 font-bold text-sm flex items-center justify-center"
+            className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-sm flex items-center justify-center border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
           >+</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SwipeToCancel({ onCancel, children }: { onCancel: () => void; children: ReactNode }) {
+  const startX = useRef(0);
+  const startY = useRef(0);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - startX.current;
+    const dy = e.changedTouches[0].clientY - startY.current;
+    if (dx > 80 && Math.abs(dx) > Math.abs(dy)) {
+      onCancel();
+    }
+  }, [onCancel]);
+
+  return (
+    <div
+      className="h-full"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {children}
     </div>
   );
 }

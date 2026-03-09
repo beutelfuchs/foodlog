@@ -8,7 +8,8 @@ export default function Toast({ toasts }: { toasts: ToastMessage[] }) {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg text-sm animate-[fadeIn_0.2s_ease-out]"
+          className="bg-neutral-800/95 backdrop-blur-md text-cyan-400 px-5 py-2.5 rounded-full shadow-lg text-sm font-medium border border-cyan-400/20"
+          style={{ animation: 'toast-in 0.25s ease-out, toast-glow 2s ease-in-out' }}
         >
           {t.text}
         </div>
