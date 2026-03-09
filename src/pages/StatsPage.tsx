@@ -58,53 +58,52 @@ export default function StatsPage() {
 
   return (
     <div className="p-4 space-y-5 h-full overflow-y-auto">
-      <h1 className="font-[family-name:var(--font-display)] text-2xl text-neutral-200">Statistics</h1>
+      <h1 className="font-[family-name:var(--font-display)] text-3xl text-white">Statistics</h1>
 
-      {/* Average card */}
-      <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
+      <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-700">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <div className="text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium">7-day average</div>
-            <div className="font-[family-name:var(--font-display)] text-3xl text-neutral-200 mt-0.5">{avg7} <span className="text-lg text-neutral-500">kcal</span></div>
+            <div className="text-sm text-neutral-400 uppercase tracking-widest font-medium">7-day average</div>
+            <div className="font-[family-name:var(--font-display)] text-4xl text-white mt-1">{avg7} <span className="text-xl text-neutral-400">kcal</span></div>
           </div>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-            trend === 'up' ? 'bg-rose-500/10 border border-rose-500/20' :
-            trend === 'down' ? 'bg-emerald-500/10 border border-emerald-500/20' :
-            'bg-neutral-800 border border-neutral-700'
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+            trend === 'up' ? 'bg-rose-500/15 border border-rose-500/30' :
+            trend === 'down' ? 'bg-emerald-500/15 border border-emerald-500/30' :
+            'bg-neutral-800 border border-neutral-600'
           }`}>
             {trend === 'up' && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
               </svg>
             )}
             {trend === 'down' && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 5v14" /><path d="M19 12l-7 7-7-7" />
               </svg>
             )}
             {trend === 'flat' && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14" />
               </svg>
             )}
           </div>
         </div>
 
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -15 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 9, fill: '#71717a' }}
+              tick={{ fontSize: 10, fill: '#999' }}
               interval={0}
               angle={-45}
               textAnchor="end"
               height={50}
-              axisLine={{ stroke: '#27272a' }}
+              axisLine={{ stroke: '#333' }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 9, fill: '#71717a' }}
+              tick={{ fontSize: 10, fill: '#999' }}
               axisLine={false}
               tickLine={false}
             />
@@ -112,35 +111,35 @@ export default function StatsPage() {
               y={DAILY_TARGET}
               stroke="#0891b2"
               strokeDasharray="4 4"
-              strokeOpacity={0.5}
-              label={{ value: `${DAILY_TARGET}`, fontSize: 9, fill: '#0891b2' }}
+              strokeOpacity={0.6}
+              label={{ value: `${DAILY_TARGET}`, fontSize: 10, fill: '#0891b2' }}
             />
             <Bar
               dataKey="kcal"
               fill="#22d3ee"
               radius={[4, 4, 0, 0]}
-              fillOpacity={0.85}
+              fillOpacity={0.9}
             />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       {/* Data management */}
-      <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800 space-y-3">
-        <div className="text-[10px] text-neutral-500 uppercase tracking-[0.2em] font-medium">Data</div>
-        <div className="flex gap-2">
+      <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-700 space-y-4">
+        <div className="text-sm text-neutral-400 uppercase tracking-widest font-semibold">Data</div>
+        <div className="flex gap-3">
           <button
             onClick={handleExport}
-            className="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 rounded-xl py-3 text-sm font-medium transition-all active:scale-[0.98]"
+            className="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 text-white rounded-xl py-4 text-base font-semibold transition-all active:scale-[0.98]"
           >
-            Export JSON
+            Export
           </button>
           <button
             onClick={() => fileRef.current?.click()}
             disabled={importing}
-            className="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 rounded-xl py-3 text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-50"
+            className="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 text-white rounded-xl py-4 text-base font-semibold transition-all active:scale-[0.98] disabled:opacity-50"
           >
-            {importing ? 'Importing...' : 'Import JSON'}
+            {importing ? 'Importing...' : 'Import'}
           </button>
           <input
             ref={fileRef}
@@ -151,7 +150,7 @@ export default function StatsPage() {
           />
         </div>
         {message && (
-          <div className="text-xs text-cyan-400 text-center" style={{ animation: 'fade-up 0.2s ease-out' }}>
+          <div className="text-base text-cyan-400 text-center font-medium" style={{ animation: 'fade-up 0.2s ease-out' }}>
             {message}
           </div>
         )}

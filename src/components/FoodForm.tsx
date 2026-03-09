@@ -32,10 +32,10 @@ export default function FoodForm({ initial, onSave, onDelete }: FoodFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800 space-y-5"
+      className="bg-neutral-900 rounded-2xl p-5 border border-neutral-700 space-y-5"
       style={{ animation: 'fade-up 0.2s ease-out' }}
     >
-      <h2 className="font-[family-name:var(--font-display)] text-xl text-neutral-200">
+      <h2 className="font-[family-name:var(--font-display)] text-2xl text-white">
         {initial ? 'Edit Food' : 'New Food'}
       </h2>
 
@@ -46,7 +46,7 @@ export default function FoodForm({ initial, onSave, onDelete }: FoodFormProps) {
         placeholder="Food name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-base text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all"
+        className="w-full bg-neutral-800 border border-neutral-600 rounded-xl px-4 py-4 text-lg text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
         autoFocus
       />
       <input
@@ -55,13 +55,13 @@ export default function FoodForm({ initial, onSave, onDelete }: FoodFormProps) {
         value={kcal}
         onChange={(e) => setKcal(e.target.value)}
         inputMode="numeric"
-        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-base text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all"
+        className="w-full bg-neutral-800 border border-neutral-600 rounded-xl px-4 py-4 text-lg text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all"
       />
 
-      <div className="flex gap-2 pt-1">
+      <div className="flex gap-3 pt-1">
         <button
           type="submit"
-          className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-neutral-950 rounded-xl py-3 font-semibold text-base active:scale-[0.98] transition-all"
+          className="flex-1 bg-cyan-500 hover:bg-cyan-400 text-black rounded-xl py-4 font-bold text-lg active:scale-[0.98] transition-all"
         >
           {initial ? 'Update' : 'Add Food'}
         </button>
@@ -69,13 +69,13 @@ export default function FoodForm({ initial, onSave, onDelete }: FoodFormProps) {
           <button
             type="button"
             onClick={onDelete}
-            className="px-5 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 text-base transition-all"
+            className="px-6 py-4 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500/25 text-lg font-semibold transition-all"
           >
             Delete
           </button>
         )}
       </div>
-      <p className="text-[10px] text-neutral-600 text-center">swipe back to cancel</p>
+      <p className="text-sm text-neutral-500 text-center">swipe back to cancel</p>
     </form>
   );
 }

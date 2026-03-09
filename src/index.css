@@ -1,15 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-neutral-950: #09090b;
-  --color-neutral-900: #18181b;
-  --color-neutral-850: #1e1e22;
-  --color-neutral-800: #27272a;
-  --color-neutral-700: #3f3f46;
-  --color-neutral-600: #52525b;
-  --color-neutral-500: #71717a;
-  --color-neutral-400: #a1a1aa;
-  --color-neutral-300: #d4d4d8;
+  --color-neutral-950: #000000;
+  --color-neutral-900: #111111;
+  --color-neutral-850: #1a1a1a;
+  --color-neutral-800: #222222;
+  --color-neutral-700: #444444;
+  --color-neutral-600: #666666;
+  --color-neutral-500: #888888;
+  --color-neutral-400: #bbbbbb;
+  --color-neutral-300: #dddddd;
+  --color-neutral-200: #eeeeee;
+  --color-neutral-100: #f5f5f5;
   --color-cyan-300: #67e8f9;
   --color-cyan-400: #22d3ee;
   --color-cyan-500: #06b6d4;
@@ -31,25 +33,14 @@ html, body, #root {
 
 body {
   font-family: var(--font-body);
-  background: var(--color-neutral-950);
-  color: var(--color-neutral-300);
-}
-
-/* Subtle noise grain overlay */
-#root::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  pointer-events: none;
-  opacity: 0.02;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 200px 200px;
+  background: #000000;
+  color: #eeeeee;
+  font-size: 18px;
 }
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-neutral-700); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-12px) scale(0.95); }
@@ -57,8 +48,8 @@ body {
 }
 
 @keyframes toast-glow {
-  0%, 100% { box-shadow: 0 0 12px rgba(34, 211, 238, 0.15); }
-  50% { box-shadow: 0 0 20px rgba(34, 211, 238, 0.3); }
+  0%, 100% { box-shadow: 0 0 12px rgba(34, 211, 238, 0.2); }
+  50% { box-shadow: 0 0 24px rgba(34, 211, 238, 0.4); }
 }
 
 @keyframes fade-up {

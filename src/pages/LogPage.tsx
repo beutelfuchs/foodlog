@@ -161,35 +161,34 @@ export default function LogPage({ showToast }: LogPageProps) {
   return (
     <div className="flex h-full">
       {/* Left column: Today's log */}
-      <div className="w-1/2 border-r border-neutral-800/80 overflow-y-auto p-3 space-y-3">
+      <div className="w-1/2 border-r border-neutral-800 overflow-y-auto p-3 space-y-3">
         {/* Kcal hero */}
-        <div className="text-center py-2">
-          <div className="font-[family-name:var(--font-display)] text-4xl text-cyan-400 leading-none"
-               style={{ textShadow: '0 0 30px rgba(251,191,36,0.15)' }}>
+        <div className="text-center py-3">
+          <div className="font-[family-name:var(--font-display)] text-5xl text-cyan-400 leading-none"
+               style={{ textShadow: '0 0 30px rgba(34,211,238,0.2)' }}>
             {totalKcal}
           </div>
-          <div className="text-[10px] text-neutral-500 uppercase tracking-[0.2em] mt-1 font-medium">kcal today</div>
+          <div className="text-sm text-neutral-400 uppercase tracking-widest mt-1.5 font-medium">kcal today</div>
         </div>
 
-        {/* Mini stats row */}
-        <div className="grid grid-cols-3 gap-1.5">
+        {/* Mini stats */}
+        <div className="grid grid-cols-3 gap-2">
           <MiniStat value={yesterdayKcal} label="yesterday" />
           <MiniStat value={thisWeekKcal} label="this week" />
           <MiniStat value={lastWeekKcal} label="last week" />
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-gradient-to-r from-transparent via-neutral-700 to-transparent" />
+        <div className="h-px bg-neutral-800" />
 
         {/* Log entries */}
         {grouped.length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-neutral-600 text-sm italic font-[family-name:var(--font-display)]">
+            <div className="text-neutral-500 text-base italic font-[family-name:var(--font-display)]">
               Tap a food to log it
             </div>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {grouped.map((group) => (
               <SwipeableLogRow
                 key={group.foodItemId}
@@ -206,10 +205,10 @@ export default function LogPage({ showToast }: LogPageProps) {
       {/* Right column: Catalogue */}
       <div className="w-1/2 overflow-y-auto p-3 space-y-2">
         <div className="flex items-center justify-between pb-1">
-          <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-[0.2em]">Catalogue</span>
+          <span className="text-sm font-semibold text-neutral-400 uppercase tracking-widest">Catalogue</span>
           <button
             onClick={() => setAdding(true)}
-            className="bg-cyan-500 hover:bg-cyan-400 text-neutral-900 rounded-full w-7 h-7 flex items-center justify-center text-lg font-light shadow-lg shadow-cyan-500/20 active:scale-90 transition-all"
+            className="bg-cyan-500 hover:bg-cyan-400 text-black rounded-full w-10 h-10 flex items-center justify-center text-2xl font-light shadow-lg shadow-cyan-500/25 active:scale-90 transition-all"
           >
             +
           </button>
@@ -217,12 +216,12 @@ export default function LogPage({ showToast }: LogPageProps) {
 
         {sortedFoods.length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-neutral-600 text-sm italic font-[family-name:var(--font-display)]">
+            <div className="text-neutral-500 text-base italic font-[family-name:var(--font-display)]">
               Tap + to add food
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             {sortedFoods.map((item) => (
               <FoodCard
                 key={item.id}
@@ -240,9 +239,9 @@ export default function LogPage({ showToast }: LogPageProps) {
 
 function MiniStat({ value, label }: { value: number; label: string }) {
   return (
-    <div className="bg-neutral-900 rounded-lg py-1.5 text-center border border-neutral-800">
-      <div className="text-sm font-semibold text-neutral-300 tabular-nums">{value}</div>
-      <div className="text-[9px] text-neutral-600 uppercase tracking-wider font-medium">{label}</div>
+    <div className="bg-neutral-900 rounded-lg py-2 text-center border border-neutral-700">
+      <div className="text-lg font-bold text-white tabular-nums">{value}</div>
+      <div className="text-[10px] text-neutral-400 uppercase tracking-wider font-semibold">{label}</div>
     </div>
   );
 }
@@ -324,11 +323,10 @@ function SwipeableLogRow({
   }, [onDragStart, onDragMove, onDragEnd]);
 
   return (
-    <div className="relative overflow-hidden rounded-lg">
-      {/* Swipe background hints */}
-      <div className="absolute inset-0 flex items-center justify-between px-3">
-        <div className="text-rose-400/60 font-semibold text-xs">-</div>
-        <div className="text-emerald-400/60 font-semibold text-xs">+</div>
+    <div className="relative overflow-hidden rounded-xl">
+      <div className="absolute inset-0 flex items-center justify-between px-4">
+        <div className="text-rose-400 font-bold text-sm">-</div>
+        <div className="text-emerald-400 font-bold text-sm">+</div>
       </div>
 
       <div
@@ -337,25 +335,25 @@ function SwipeableLogRow({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onMouseDown={handleMouseDown}
-        className="relative bg-neutral-850 rounded-lg px-2 py-2 flex items-center justify-between border border-neutral-800 z-10 select-none cursor-grab active:cursor-grabbing"
+        className="relative bg-neutral-850 rounded-xl px-3 py-3 flex items-center justify-between border border-neutral-700 z-10 select-none cursor-grab active:cursor-grabbing"
       >
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); onSwipeLeft(); }}
-            className="w-6 h-6 rounded-full bg-rose-500/10 text-rose-400 font-bold text-sm flex items-center justify-center border border-rose-500/20 hover:bg-rose-500/20 transition-colors"
+            className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-400 font-bold text-lg flex items-center justify-center border border-rose-500/30 active:bg-rose-500/25"
           >-</button>
-          <span className="font-medium text-xs text-neutral-300">{food?.name ?? '...'}</span>
+          <span className="font-semibold text-base text-white">{food?.name ?? '...'}</span>
           {group.count > 1 && (
-            <span className="bg-cyan-500/15 text-cyan-400 text-[10px] font-bold rounded-full px-1.5 py-0.5 border border-cyan-500/20">
+            <span className="bg-cyan-500/20 text-cyan-300 text-sm font-bold rounded-full px-2 py-0.5 border border-cyan-500/30">
               x{group.count}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-neutral-500 text-xs tabular-nums">{group.totalKcal}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-neutral-300 text-base font-semibold tabular-nums">{group.totalKcal}</span>
           <button
             onClick={(e) => { e.stopPropagation(); onSwipeRight(); }}
-            className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-sm flex items-center justify-center border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+            className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-400 font-bold text-lg flex items-center justify-center border border-emerald-500/30 active:bg-emerald-500/25"
           >+</button>
         </div>
       </div>
