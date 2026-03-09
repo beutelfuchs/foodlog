@@ -10,7 +10,7 @@ if (navigator.storage?.persist) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/foodlog">
       <App />
     </BrowserRouter>
   </StrictMode>,

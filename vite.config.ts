@@ -29,7 +29,7 @@ export default defineConfig({
           { src: '/icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
         share_target: {
-          action: '/share',
+          action: '/foodlog/share',
           method: 'POST',
           enctype: 'multipart/form-data',
           params: {
