@@ -5,11 +5,11 @@ import ImageCapture from './ImageCapture';
 interface FoodFormProps {
   initial?: FoodItem;
   onSave: (data: { name: string; kcal: number; image?: Blob }) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
   onDelete?: () => void;
 }
 
-export default function FoodForm({ initial, onSave, onCancel, onDelete }: FoodFormProps) {
+export default function FoodForm({ initial, onSave, onDelete }: FoodFormProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [kcal, setKcal] = useState(initial?.kcal?.toString() ?? '');
   const [image, setImage] = useState<Blob | undefined>(initial?.image);

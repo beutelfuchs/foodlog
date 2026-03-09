@@ -13,7 +13,7 @@ const LONG_PRESS_MS = 500;
 
 export default function FoodCard({ item, onTap, onLongPress, showKcal = true }: FoodCardProps) {
   const [imgUrl, setImgUrl] = useState<string>();
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const longPressTriggered = useRef(false);
 
   useEffect(() => {
