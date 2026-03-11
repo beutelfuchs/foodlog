@@ -20,6 +20,7 @@ export default function BottomNav() {
         <NavLink
           key={tab.to}
           to={tab.to}
+          replace
           end={tab.to === '/'}
           className={({ isActive }) =>
             `flex flex-col items-center justify-center flex-1 h-full text-sm font-bold tracking-wider uppercase transition-all duration-200 ${

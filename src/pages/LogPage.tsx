@@ -1,14 +1,16 @@
 import { useRef, useCallback, useState, useEffect, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { todayKey, dayKeyFor } from '../utils/dates';
 import { blobToUrl } from '../utils/imageUtils';
-import { subDays } from 'date-fns';
+import { subDays, format } from 'date-fns';
 import type { FoodItem, LogEntry } from '../models';
 import FoodCard from '../components/FoodCard';
 import FoodForm from '../components/FoodForm';
 
 const LONG_PRESS_MS = 500;
+const MAX_DAY_OFFSET = 90;
 
 interface LogPageProps {
   showToast: (text: string) => void;
@@ -23,6 +25,18 @@ interface GroupedEntry {
 }
 
 export default function LogPage({ showToast }: LogPageProps) {
+  const navigate = useNavigate();
+
+  // Day navigation
+  const [dayOffset, setDayOffset] = useState(0);
+  const [pastEditing, setPastEditing] = useState(false);
+  const isViewingToday = dayOffset === 0;
+
+  // Reset editing when returning to today
+  useEffect(() => {
+    if (isViewingToday) setPastEditing(false);
+  }, [isViewingToday]);
+
   // Refresh todayKey when app resumes / tab becomes visible
   const [today, setToday] = useState(todayKey);
   useEffect(() => {
@@ -31,55 +45,131 @@ export default function LogPage({ showToast }: LogPageProps) {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
+  const viewDayKey = isViewingToday ? today : dayKeyFor(subDays(new Date(), dayOffset));
+  const canEdit = isViewingToday || pastEditing;
+
   const [editing, setEditing] = useState<FoodItem | null>(null);
   const [adding, setAdding] = useState(false);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [activeEditId, setActiveEditId] = useState<number | null>(null);
+  const editSnapshotRef = useRef<LogEntry[]>([]);
   const [highlightId, setHighlightId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Persisted "start new day" — stored as the date string when dismissed
-  const dayStartedRaw = useLiveQuery(
-    () => db.settings.get('dayStarted'),
-    []
-  );
-  const yesterdayDismissed = dayStartedRaw?.value === today;
-  const setYesterdayDismissed = useCallback(() => {
-    db.settings.put({ key: 'dayStarted', value: today });
-  }, [today]);
-
-  // Stable display order — lock the order of foodItemIds so it doesn't reshuffle
+  // Stable display order — reset when changing days
   const stableOrderRef = useRef<number[]>([]);
-  const stableYesterdayOrderRef = useRef<number[]>([]);
+  const prevDayKey = useRef(viewDayKey);
+  if (prevDayKey.current !== viewDayKey) {
+    stableOrderRef.current = [];
+    prevDayKey.current = viewDayKey;
+  }
 
-  // Register overlay close callback for Android back button
+  // Snapshot entries when starting quantity edit, restore on cancel
+  function activateEdit(foodItemId: number) {
+    const entries = viewEntriesRef.current.filter((e) => e.foodItemId === foodItemId);
+    editSnapshotRef.current = entries;
+    setActiveEditId(foodItemId);
+  }
+
+  async function cancelEdit() {
+    const editId = overlayStateRef.current.activeEditId;
+    if (editId === null) return;
+    const original = editSnapshotRef.current;
+    const current = viewEntriesRef.current.filter((e) => e.foodItemId === editId);
+    // Remove all current entries for this food on this day
+    await db.logEntries.bulkDelete(current.map((e) => e.id!));
+    // Re-add original entries
+    for (const entry of original) {
+      const { id, ...rest } = entry;
+      await db.logEntries.add(rest);
+    }
+    setActiveEditId(null);
+  }
+
+  // Use a ref so back handler always reads the latest state (no stale closures)
+  const overlayStateRef = useRef({ adding: false, editing: null as FoodItem | null, catalogueOpen: false, isViewingToday: true, activeEditId: null as number | null, pastEditing: false });
+  overlayStateRef.current = { adding, editing, catalogueOpen, isViewingToday, activeEditId, pastEditing };
+
+  // Close the topmost overlay/state layer; returns true if something was closed
+  function closeTopLayer() {
+    const s = overlayStateRef.current;
+    if (s.adding || s.editing) {
+      setAdding(false);
+      setEditing(null);
+      s.adding = false;
+      s.editing = null;
+      return true;
+    }
+    if (s.catalogueOpen) {
+      setCatalogueOpen(false);
+      s.catalogueOpen = false;
+      return true;
+    }
+    if (s.activeEditId !== null) {
+      cancelEdit();
+      s.activeEditId = null;
+      return true;
+    }
+    if (s.pastEditing) {
+      setPastEditing(false);
+      s.pastEditing = false;
+      if (s.activeEditId !== null) {
+        setActiveEditId(null);
+        s.activeEditId = null;
+      }
+      return true;
+    }
+    if (!s.isViewingToday) {
+      setDayOffset(0);
+      s.isViewingToday = true;
+      if (s.pastEditing) { setPastEditing(false); s.pastEditing = false; }
+      if (s.activeEditId !== null) { setActiveEditId(null); s.activeEditId = null; }
+      return true;
+    }
+    return false;
+  }
+
+  // Deduplicate: only one handler per back gesture should act
+  const backHandled = useRef(false);
+  function handleBack() {
+    if (backHandled.current) return false;
+    backHandled.current = true;
+    setTimeout(() => { backHandled.current = false; }, 0);
+    return closeTopLayer();
+  }
+
+  // Register __closeOverlay for Capacitor backButton
   useEffect(() => {
-    (window as any).__closeOverlay = () => {
-      if (adding || editing) {
-        setAdding(false);
-        setEditing(null);
-        return true;
-      }
-      if (catalogueOpen) {
-        setCatalogueOpen(false);
-        return true;
-      }
-      return false;
-    };
+    (window as any).__closeOverlay = () => handleBack();
     return () => { (window as any).__closeOverlay = null; };
-  }, [adding, editing, catalogueOpen]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for popstate (Android back gesture via browser history)
+  useEffect(() => {
+    function onPopstate() { handleBack(); }
+    window.addEventListener('popstate', onPopstate);
+    return () => window.removeEventListener('popstate', onPopstate);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const foodItems = useLiveQuery(() => db.foodItems.toArray());
-  const yesterday = dayKeyFor(subDays(new Date(), 1));
 
-  const todayEntries = useLiveQuery(
-    () => db.logEntries.where('dayKey').equals(today).toArray(),
-    [today]
+  // Entries for viewed day
+  const viewEntries = useLiveQuery(
+    () => db.logEntries.where('dayKey').equals(viewDayKey).toArray(),
+    [viewDayKey]
   );
+
+  // Keep a ref in sync so closures (cancelEdit, __closeOverlay) don't need viewEntries as a dep
+  const viewEntriesRef = useRef<LogEntry[]>([]);
+  useEffect(() => { viewEntriesRef.current = viewEntries ?? []; }, [viewEntries]);
+
+  // Yesterday entries for today header
+  const yesterdayKey = dayKeyFor(subDays(new Date(), 1));
   const yesterdayEntries = useLiveQuery(
-    () => db.logEntries.where('dayKey').equals(yesterday).toArray(),
-    [yesterday]
+    () => isViewingToday ? db.logEntries.where('dayKey').equals(yesterdayKey).toArray() : Promise.resolve([]),
+    [yesterdayKey, isViewingToday]
   );
+
   const allEntries = useLiveQuery(() => db.logEntries.toArray());
 
   const sortedFoods = (() => {
@@ -98,13 +188,13 @@ export default function LogPage({ showToast }: LogPageProps) {
     });
   })();
 
-  const totalKcal = todayEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
+  const totalKcal = viewEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
   const yesterdayKcal = yesterdayEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
 
   const grouped: GroupedEntry[] = (() => {
-    if (!todayEntries) return [];
+    if (!viewEntries) return [];
     const map = new Map<number, GroupedEntry>();
-    for (const e of todayEntries) {
+    for (const e of viewEntries) {
       const existing = map.get(e.foodItemId);
       if (existing) {
         existing.count++;
@@ -121,7 +211,7 @@ export default function LogPage({ showToast }: LogPageProps) {
       }
     }
     // Keep actively-edited item visible even at zero count
-    if (activeEditId !== null && !map.has(activeEditId)) {
+    if (canEdit && activeEditId !== null && !map.has(activeEditId)) {
       const food = foodItems?.find((f) => f.id === activeEditId);
       if (food) {
         map.set(activeEditId, {
@@ -134,7 +224,7 @@ export default function LogPage({ showToast }: LogPageProps) {
       }
     }
     const values = [...map.values()];
-    // Stable order: never remove IDs from ref, only append new ones — prevents resorting on transient states
+    // Stable order: never remove IDs from ref, only append new ones
     const knownIds = new Set(stableOrderRef.current);
     const newIds = values.filter((g) => !knownIds.has(g.foodItemId)).map((g) => g.foodItemId);
     if (newIds.length > 0) stableOrderRef.current = [...stableOrderRef.current, ...newIds];
@@ -142,60 +232,45 @@ export default function LogPage({ showToast }: LogPageProps) {
     return values.sort((a, b) => (orderIndex.get(a.foodItemId) ?? 0) - (orderIndex.get(b.foodItemId) ?? 0));
   })();
 
-  const yesterdayGrouped: GroupedEntry[] = (() => {
-    if (!yesterdayEntries) return [];
-    const map = new Map<number, GroupedEntry>();
-    for (const e of yesterdayEntries) {
-      const existing = map.get(e.foodItemId);
-      if (existing) {
-        existing.count++;
-        existing.totalKcal += e.kcal;
-        existing.entries.push(e);
-      } else {
-        map.set(e.foodItemId, {
-          foodItemId: e.foodItemId,
-          kcalPerServing: e.kcal,
-          count: 1,
-          totalKcal: e.kcal,
-          entries: [e],
-        });
-      }
-    }
-    if (activeEditId !== null && !map.has(activeEditId)) {
-      const food = foodItems?.find((f) => f.id === activeEditId);
-      if (food) {
-        map.set(activeEditId, {
-          foodItemId: activeEditId,
-          kcalPerServing: food.kcal,
-          count: 0,
-          totalKcal: 0,
-          entries: [],
-        });
-      }
-    }
-    const values = [...map.values()];
-    const knownIds = new Set(stableYesterdayOrderRef.current);
-    const newIds = values.filter((g) => !knownIds.has(g.foodItemId)).map((g) => g.foodItemId);
-    if (newIds.length > 0) stableYesterdayOrderRef.current = [...stableYesterdayOrderRef.current, ...newIds];
-    const orderIndex = new Map(stableYesterdayOrderRef.current.map((id, i) => [id, i]));
-    return values.sort((a, b) => (orderIndex.get(a.foodItemId) ?? 0) - (orderIndex.get(b.foodItemId) ?? 0));
-  })();
+  const hasRealEntries = grouped.some((g) => g.count > 0);
 
-  // For showYesterday: exclude zero-count placeholder from check (don't count it as a real today entry)
-  const hasRealTodayEntries = grouped.some((g) => g.count > 0);
-  const showYesterday = !hasRealTodayEntries && yesterdayGrouped.length > 0 && !yesterdayDismissed;
-  const activeDayKey = showYesterday ? yesterday : today;
+  // Swipe handling for day navigation
+  const swipeStartX = useRef(0);
+  const swipeStartY = useRef(0);
+
+  const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    swipeStartX.current = e.touches[0].clientX;
+    swipeStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleSwipeEnd = useCallback((e: React.TouchEvent) => {
+    if (pastEditing || activeEditId !== null) return;
+    const dx = e.changedTouches[0].clientX - swipeStartX.current;
+    const dy = e.changedTouches[0].clientY - swipeStartY.current;
+    if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx)) return;
+
+    if (dx > 0) {
+      // Swipe right → go back a day
+      setDayOffset((d) => Math.min(d + 1, MAX_DAY_OFFSET));
+    } else {
+      // Swipe left → go forward or to Stats
+      if (dayOffset > 0) {
+        setDayOffset((d) => d - 1);
+      } else {
+        navigate('/stats', { replace: true });
+      }
+    }
+  }, [dayOffset, navigate, pastEditing, activeEditId]);
 
   async function logFood(item: FoodItem) {
     await db.logEntries.add({
       foodItemId: item.id!,
       kcal: item.kcal,
       timestamp: Date.now(),
-      dayKey: activeDayKey,
+      dayKey: viewDayKey,
     });
     setCatalogueOpen(false);
     setHighlightId(item.id!);
-    // Scroll to bottom after React re-renders with the new entry
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     });
@@ -209,7 +284,7 @@ export default function LogPage({ showToast }: LogPageProps) {
       foodItemId: group.foodItemId,
       kcal,
       timestamp: Date.now(),
-      dayKey: activeDayKey,
+      dayKey: viewDayKey,
     });
   }
 
@@ -242,6 +317,11 @@ export default function LogPage({ showToast }: LogPageProps) {
     showToast('Deleted');
   }
 
+  function viewDayLabel(): string {
+    if (dayOffset === 1) return 'Yesterday';
+    return format(subDays(new Date(), dayOffset), 'EEE, MMM d');
+  }
+
   // FoodForm overlay
   if (adding || editing) {
     return (
@@ -259,59 +339,66 @@ export default function LogPage({ showToast }: LogPageProps) {
   }
 
   return (
-    <div ref={scrollRef} className="h-full overflow-y-auto p-4 pb-24 space-y-3">
-      {/* Today + yesterday */}
-      <div className="flex items-baseline justify-between">
-        <div>
-          <span className="font-[family-name:var(--font-display)] text-4xl text-cyan-400 font-bold"
-                style={{ textShadow: '0 0 30px rgba(34,211,238,0.3)' }}>
-            {totalKcal}
-          </span>
-          <span className="text-sm text-white font-bold ml-1">today</span>
-        </div>
-        <div className="text-base text-neutral-300 tabular-nums">
-          <span className="text-neutral-500">yesterday </span><span className="font-bold">{yesterdayKcal}</span>
-        </div>
-      </div>
-
-      <div className="h-px bg-neutral-700" />
+    <div
+      ref={scrollRef}
+      className="h-full overflow-y-auto p-4 pb-24 space-y-3"
+      onTouchStart={handleSwipeStart}
+      onTouchEnd={handleSwipeEnd}
+    >
+      {/* Header */}
+      {isViewingToday ? (
+        <>
+          <div className="flex items-baseline justify-between">
+            <div>
+              <span className="font-[family-name:var(--font-display)] text-4xl text-cyan-400 font-bold"
+                    style={{ textShadow: '0 0 30px rgba(34,211,238,0.3)' }}>
+                {totalKcal}
+              </span>
+              <span className="text-sm text-white font-bold ml-1">today</span>
+            </div>
+            <div className="text-base text-neutral-300 tabular-nums">
+              <span className="text-neutral-500">yesterday </span><span className="font-bold">{yesterdayKcal}</span>
+            </div>
+          </div>
+          <div className="h-px bg-neutral-700" />
+        </>
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={() => { if (!pastEditing) setDayOffset(0); }}
+              className={`px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition-transform shrink-0 ${
+                pastEditing ? 'bg-neutral-800 border border-neutral-700 text-neutral-600' : 'bg-cyan-500/15 border border-cyan-500/40 text-cyan-300'
+              }`}
+            >
+              Today
+            </button>
+            <div className="text-center min-w-0">
+              <div className="text-white font-bold truncate">{viewDayLabel()}</div>
+              <div className="text-cyan-400 font-bold tabular-nums text-sm">{totalKcal} kcal</div>
+            </div>
+            <button
+              onClick={() => setPastEditing(!pastEditing)}
+              className={`px-4 py-2 rounded-lg font-bold text-sm active:scale-95 transition-transform shrink-0 ${
+                pastEditing ? 'bg-cyan-500 text-black' : 'bg-neutral-800 border border-neutral-600 text-neutral-300'
+              }`}
+            >
+              {pastEditing ? 'Done' : 'Edit'}
+            </button>
+          </div>
+          <div className="h-px bg-neutral-700" />
+        </>
+      )}
 
       {/* Log entries */}
-      {!hasRealTodayEntries && !showYesterday && activeEditId === null ? (
+      {!hasRealEntries && activeEditId === null ? (
         <div className="text-center py-6">
           <div className="text-neutral-400 text-lg italic font-[family-name:var(--font-display)]">
-            Tap + to log food
-          </div>
-        </div>
-      ) : !hasRealTodayEntries && showYesterday ? (
-        <div className="space-y-3">
-          <button
-            onClick={() => setYesterdayDismissed()}
-            className="w-full py-3 rounded-xl bg-cyan-500/15 border-2 border-cyan-500/40 text-cyan-300 font-bold text-lg active:scale-[0.97] transition-transform"
-          >
-            Start new day
-          </button>
-          <div className="flex items-center justify-between">
-            <span className="text-neutral-400 text-sm uppercase tracking-widest font-bold">Yesterday&apos;s log</span>
-            <span className="text-neutral-500 text-sm tabular-nums">{yesterdayKcal} kcal</span>
-          </div>
-          <div className="space-y-2">
-            {yesterdayGrouped.map((group) => (
-              <LogRow
-                key={group.foodItemId}
-                group={group}
-                foodItems={foodItems}
-                onAdd={() => addOne(group)}
-                onRemove={() => removeOne(group)}
-                onActivate={() => setActiveEditId(group.foodItemId)}
-                onDeactivate={() => setActiveEditId(null)}
-                highlight={highlightId === group.foodItemId}
-              />
-            ))}
+            {isViewingToday ? 'Tap + to log food' : 'No entries'}
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className={`space-y-2 transition-opacity ${!canEdit ? 'opacity-50' : ''}`}>
           {grouped.map((group) => (
             <LogRow
               key={group.foodItemId}
@@ -319,21 +406,25 @@ export default function LogPage({ showToast }: LogPageProps) {
               foodItems={foodItems}
               onAdd={() => addOne(group)}
               onRemove={() => removeOne(group)}
-              onActivate={() => setActiveEditId(group.foodItemId)}
+              onActivate={() => activateEdit(group.foodItemId)}
               onDeactivate={() => setActiveEditId(null)}
               highlight={highlightId === group.foodItemId}
+              disabled={!canEdit}
+              isActive={activeEditId === group.foodItemId}
             />
           ))}
         </div>
       )}
 
-      {/* FAB — open catalogue */}
-      <button
-        onClick={() => setCatalogueOpen(true)}
-        className="fixed bottom-20 right-4 bg-cyan-500 active:bg-cyan-400 text-black rounded-full w-14 h-14 flex items-center justify-center text-3xl font-light shadow-lg shadow-cyan-500/30 active:scale-90 transition-all z-40"
-      >
-        +
-      </button>
+      {/* FAB — open catalogue (only when editing is allowed) */}
+      {canEdit && (
+        <button
+          onClick={() => setCatalogueOpen(true)}
+          className="fixed bottom-20 right-4 bg-cyan-500 active:bg-cyan-400 text-black rounded-full w-14 h-14 flex items-center justify-center text-3xl font-light shadow-lg shadow-cyan-500/30 active:scale-90 transition-all z-40"
+        >
+          +
+        </button>
+      )}
 
       {/* Catalogue popup */}
       {catalogueOpen && (
@@ -346,8 +437,7 @@ export default function LogPage({ showToast }: LogPageProps) {
               </div>
 
               {(() => {
-                const activeGroups = showYesterday ? yesterdayGrouped : grouped;
-                const loggedIds = new Set(activeGroups.filter((g) => g.count > 0).map((g) => g.foodItemId));
+                const loggedIds = new Set(grouped.filter((g) => g.count > 0).map((g) => g.foodItemId));
                 const available = sortedFoods.filter((f) => !loggedIds.has(f.id!));
                 return available.length === 0 ? (
                   <div className="text-center py-12">
@@ -380,6 +470,7 @@ export default function LogPage({ showToast }: LogPageProps) {
           </div>
         </SwipeToCancel>
       )}
+
     </div>
   );
 }
@@ -392,6 +483,8 @@ function LogRow({
   onActivate,
   onDeactivate,
   highlight,
+  disabled,
+  isActive,
 }: {
   group: GroupedEntry;
   foodItems: FoodItem[] | undefined;
@@ -400,6 +493,8 @@ function LogRow({
   onActivate: () => void;
   onDeactivate: () => void;
   highlight?: boolean;
+  disabled?: boolean;
+  isActive?: boolean;
 }) {
   const food = foodItems?.find((f) => f.id === group.foodItemId);
   const [imgUrl, setImgUrl] = useState<string>();
@@ -423,7 +518,16 @@ function LogRow({
     return () => clearTimeout(dismissTimer.current);
   }, [mode]);
 
+  // Reset to idle when disabled or parent deactivates; kill any pending long-press
+  useEffect(() => {
+    if (disabled || isActive === false) {
+      setMode('idle');
+      clearTimeout(longPressTimer.current);
+    }
+  }, [disabled, isActive]);
+
   const handleTouchStart = useCallback(() => {
+    if (disabled) return;
     touchMoved.current = false;
     longPressTimer.current = setTimeout(() => {
       if (!touchMoved.current) {
@@ -432,7 +536,7 @@ function LogRow({
         if (navigator.vibrate) navigator.vibrate(30);
       }
     }, LONG_PRESS_MS);
-  }, [onActivate]);
+  }, [onActivate, disabled]);
 
   const handleTouchMove = useCallback(() => {
     touchMoved.current = true;
@@ -444,11 +548,11 @@ function LogRow({
   }, []);
 
   const handleTap = useCallback(() => {
-    if (touchMoved.current) return;
+    if (disabled || touchMoved.current) return;
     if (mode === 'idle') {
       setMode('hint');
     }
-  }, [mode]);
+  }, [mode, disabled]);
 
   return (
     <div className="space-y-2">

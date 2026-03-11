@@ -43,6 +43,9 @@ export function App() {
   }, []);
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
+    // LogPage handles its own swipe navigation (day browsing + Stats)
+    if (location.pathname === '/') return;
+
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx)) return;
@@ -51,9 +54,9 @@ export function App() {
     if (currentIdx === -1) return;
 
     if (dx < 0 && currentIdx < TAB_ORDER.length - 1) {
-      navigate(TAB_ORDER[currentIdx + 1]);
+      navigate(TAB_ORDER[currentIdx + 1], { replace: true });
     } else if (dx > 0 && currentIdx > 0) {
-      navigate(TAB_ORDER[currentIdx - 1]);
+      navigate(TAB_ORDER[currentIdx - 1], { replace: true });
     }
   }, [location.pathname, navigate]);
 
@@ -76,7 +79,7 @@ export function App() {
       }
       // No overlay open — let the app handle it normally
       if (location.pathname !== '/') {
-        navigate('/');
+        navigate('/', { replace: true });
       } else {
         CapApp.exitApp();
       }
