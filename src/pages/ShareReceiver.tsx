@@ -49,9 +49,9 @@ export default function ShareReceiver({ sharedImage, setSharedImage, showToast }
 
   return (
     <div className="p-4 space-y-4 h-full overflow-y-auto">
-      <div className="flex items-center justify-between">
+      <div>
         <h1 className="font-[family-name:var(--font-display)] text-2xl text-white">Assign Photo</h1>
-        <button onClick={cancel} className="text-neutral-400 hover:text-white text-base font-medium transition-colors">Cancel</button>
+        <p className="text-sm text-neutral-400 mt-1">Swipe back to cancel</p>
       </div>
 
       {previewUrl && (

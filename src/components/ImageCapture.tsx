@@ -1,4 +1,6 @@
 import { useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { compressImage, blobToUrl } from '../utils/imageUtils';
 import { useEffect, useState } from 'react';
 
@@ -17,6 +19,28 @@ export default function ImageCapture({ image, onChange }: ImageCaptureProps) {
     return () => { if (url) URL.revokeObjectURL(url); };
   }, [image]);
 
+  async function handleCapture() {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const photo = await Camera.getPhoto({
+          resultType: CameraResultType.DataUrl,
+          source: CameraSource.Prompt,
+          quality: 80,
+          width: 400,
+        });
+        if (photo.dataUrl) {
+          const response = await fetch(photo.dataUrl);
+          const blob = await response.blob();
+          onChange(blob);
+        }
+      } catch {
+        // User cancelled
+      }
+    } else {
+      inputRef.current?.click();
+    }
+  }
+
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -28,7 +52,7 @@ export default function ImageCapture({ image, onChange }: ImageCaptureProps) {
     <div className="flex items-center gap-4">
       <button
         type="button"
-        onClick={() => inputRef.current?.click()}
+        onClick={handleCapture}
         className="w-24 h-24 rounded-xl border-2 border-dashed border-neutral-600 hover:border-cyan-500/50 flex items-center justify-center overflow-hidden bg-neutral-800 shrink-0 transition-colors"
       >
         {previewUrl ? (
@@ -44,7 +68,6 @@ export default function ImageCapture({ image, onChange }: ImageCaptureProps) {
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={handleFile}
         className="hidden"
       />

@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import LogPage from './pages/LogPage';
 import StatsPage from './pages/StatsPage';
 import ShareReceiver from './pages/ShareReceiver';
@@ -13,6 +15,9 @@ export interface ToastMessage {
 
 const TAB_ORDER = ['/', '/stats'];
 let toastId = 0;
+
+// Global overlay close callback — set by LogPage when catalogue/edit is open
+(window as any).__closeOverlay = null as (() => boolean) | null;
 
 export function App() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -61,22 +66,78 @@ export function App() {
     };
   }, [handleTouchStart, handleTouchEnd]);
 
-  // Handle shared images from Web Share Target
+  // Handle Android back button — close overlays before exiting
+  useEffect(() => {
+    const listener = CapApp.addListener('backButton', () => {
+      const closeOverlay = (window as any).__closeOverlay;
+      if (closeOverlay && closeOverlay()) {
+        // overlay was closed
+        return;
+      }
+      // No overlay open — let the app handle it normally
+      if (location.pathname !== '/') {
+        navigate('/');
+      } else {
+        CapApp.exitApp();
+      }
+    });
+    return () => { listener.then(h => h.remove()); };
+  }, [location.pathname, navigate]);
+
+  // Handle shared images
   const [sharedImage, setSharedImage] = useState<File | null>(null);
 
   useEffect(() => {
+    // Capacitor (Android): receive shared images via MainActivity bridge
+    if (Capacitor.isNativePlatform()) {
+      async function loadSharedImage(filePath: string) {
+        try {
+          // Read the file from Android's cache dir via Capacitor's file serving
+          const { Filesystem, Directory } = await import('@capacitor/filesystem');
+          const result = await Filesystem.readFile({ path: filePath });
+          // result.data is base64
+          const base64 = result.data as string;
+          const bytes = atob(base64);
+          const arr = new Uint8Array(bytes.length);
+          for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+          const file = new File([new Blob([arr], { type: 'image/jpeg' })], 'shared-image.jpg', { type: 'image/jpeg' });
+          setSharedImage(file);
+          navigate('/share');
+        } catch (e) {
+          console.error('Failed to load shared image:', e);
+        }
+      }
+
+      // Register callback for when native side injects
+      (window as any).__handleSharedImage = (path: string) => {
+        loadSharedImage(path);
+      };
+
+      // Check if native side already set a pending path (cold start)
+      const pending = (window as any).__pendingSharePath;
+      if (pending) {
+        (window as any).__pendingSharePath = null;
+        loadSharedImage(pending);
+      }
+
+      return () => { (window as any).__handleSharedImage = null; };
+    }
+
+    // PWA: listen for service worker messages
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', (event) => {
+      const handler = (event: MessageEvent) => {
         if (event.data?.type === 'SHARED_IMAGE' && event.data.file) {
           setSharedImage(event.data.file);
           navigate('/share');
         }
-      });
+      };
+      navigator.serviceWorker.addEventListener('message', handler);
+      return () => navigator.serviceWorker.removeEventListener('message', handler);
     }
   }, [navigate]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full pt-[env(safe-area-inset-top)]">
       <div className="flex-1 overflow-hidden pb-14">
         <Routes>
           <Route path="/" element={<LogPage showToast={showToast} />} />

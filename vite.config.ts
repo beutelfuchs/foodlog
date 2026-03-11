@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const isCapacitor = process.env.BUILD_TARGET === 'capacitor';
+
 export default defineConfig({
-  base: '/foodlog/',
+  base: isCapacitor ? '/' : '/foodlog/',
   plugins: [
     react(),
     tailwindcss(),

@@ -1,23 +1,42 @@
 import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
 import { db } from '../db';
-import { lastNDays, dayLabel } from '../utils/dates';
+import { lastNDays, dayLabel, todayKey, dayKeyFor } from '../utils/dates';
 import { exportData, importData } from '../utils/dataIO';
+import { startOfWeek, subDays } from 'date-fns';
 
-const DAYS = 14;
+const DAYS = 7;
 const DAILY_TARGET = 2000;
 
 export default function StatsPage() {
   const days = lastNDays(DAYS);
+  const today = todayKey();
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState('');
 
+  // Chart data (7 days)
   const entries = useLiveQuery(
     () => db.logEntries.where('dayKey').anyOf(days).toArray(),
     [days.join(',')]
   );
+
+  // Weekly totals
+  const thisWeekStart = dayKeyFor(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const lastWeekStart = dayKeyFor(subDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 7));
+
+  const thisWeekEntries = useLiveQuery(
+    () => db.logEntries.where('dayKey').between(thisWeekStart, today + '\uffff').toArray(),
+    [thisWeekStart, today]
+  );
+  const lastWeekEntries = useLiveQuery(
+    () => db.logEntries.where('dayKey').between(lastWeekStart, thisWeekStart).toArray(),
+    [lastWeekStart, thisWeekStart]
+  );
+
+  const thisWeekKcal = thisWeekEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
+  const lastWeekKcal = lastWeekEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
 
   const chartData = days.map((day) => {
     const dayEntries = entries?.filter((e) => e.dayKey === day) ?? [];
@@ -25,11 +44,8 @@ export default function StatsPage() {
     return { day, label: dayLabel(day), kcal: total };
   });
 
-  const last7 = chartData.slice(-7);
-  const avg7 = Math.round(last7.reduce((s, d) => s + d.kcal, 0) / 7);
-  const prev7 = chartData.slice(-14, -7);
-  const avgPrev7 = Math.round(prev7.reduce((s, d) => s + d.kcal, 0) / 7);
-  const trend = avg7 > avgPrev7 ? 'up' : avg7 < avgPrev7 ? 'down' : 'flat';
+  const avg7 = Math.round(chartData.reduce((s, d) => s + d.kcal, 0) / 7);
+  const trend = thisWeekKcal > lastWeekKcal ? 'up' : thisWeekKcal < lastWeekKcal ? 'down' : 'flat';
 
   async function handleExport() {
     try {
@@ -57,53 +73,47 @@ export default function StatsPage() {
   }
 
   return (
-    <div className="p-4 space-y-5 h-full overflow-y-auto">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl text-white">Statistics</h1>
-
-      <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-700">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <div className="text-sm text-neutral-400 uppercase tracking-widest font-medium">7-day average</div>
-            <div className="font-[family-name:var(--font-display)] text-4xl text-white mt-1">{avg7} <span className="text-xl text-neutral-400">kcal</span></div>
-          </div>
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-            trend === 'up' ? 'bg-rose-500/15 border border-rose-500/30' :
-            trend === 'down' ? 'bg-emerald-500/15 border border-emerald-500/30' :
-            'bg-neutral-800 border border-neutral-600'
-          }`}>
-            {trend === 'up' && (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fb7185" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
-              </svg>
-            )}
-            {trend === 'down' && (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 5v14" /><path d="M19 12l-7 7-7-7" />
-              </svg>
-            )}
-            {trend === 'flat' && (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14" />
-              </svg>
-            )}
-          </div>
+    <div className="p-4 space-y-4 h-full overflow-y-auto">
+      {/* Weekly summary */}
+      <div className="flex justify-between items-baseline">
+        <div>
+          <span className="font-[family-name:var(--font-display)] text-4xl text-cyan-400 font-bold">{avg7}</span>
+          <span className="text-sm text-white font-bold ml-1">avg/day</span>
         </div>
+        <div className={`flex items-center gap-1 ${
+          trend === 'up' ? 'text-rose-400' : trend === 'down' ? 'text-emerald-400' : 'text-neutral-400'
+        }`}>
+          {trend === 'up' && '▲'}
+          {trend === 'down' && '▼'}
+          {trend === 'flat' && '—'}
+        </div>
+      </div>
 
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -15 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+      {/* Weekly totals */}
+      <div className="flex gap-3">
+        <div className="flex-1 bg-neutral-850 rounded-xl py-3 px-4 border-2 border-neutral-700">
+          <div className="text-xs text-neutral-400 uppercase tracking-wider font-bold">This week</div>
+          <div className="text-2xl font-bold text-white tabular-nums">{thisWeekKcal}</div>
+        </div>
+        <div className="flex-1 bg-neutral-850 rounded-xl py-3 px-4 border-2 border-neutral-700">
+          <div className="text-xs text-neutral-400 uppercase tracking-wider font-bold">Last week</div>
+          <div className="text-2xl font-bold text-white tabular-nums">{lastWeekKcal}</div>
+        </div>
+      </div>
+
+      {/* Chart — 7 days, tall and readable */}
+      <div className="bg-neutral-850 rounded-2xl p-4 border-2 border-neutral-700">
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={chartData} margin={{ top: 10, right: 5, bottom: 5, left: -10 }}>
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 10, fill: '#999' }}
+              tick={{ fontSize: 14, fill: '#ccc', fontWeight: 'bold' }}
               interval={0}
-              angle={-45}
-              textAnchor="end"
-              height={50}
-              axisLine={{ stroke: '#333' }}
+              axisLine={{ stroke: '#444' }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: '#999' }}
+              tick={{ fontSize: 12, fill: '#888' }}
               axisLine={false}
               tickLine={false}
             />
@@ -111,33 +121,39 @@ export default function StatsPage() {
               y={DAILY_TARGET}
               stroke="#0891b2"
               strokeDasharray="4 4"
-              strokeOpacity={0.6}
-              label={{ value: `${DAILY_TARGET}`, fontSize: 10, fill: '#0891b2' }}
+              strokeOpacity={0.5}
             />
             <Bar
               dataKey="kcal"
-              fill="#22d3ee"
-              radius={[4, 4, 0, 0]}
-              fillOpacity={0.9}
-            />
+              radius={[6, 6, 0, 0]}
+              label={{ position: 'top', fill: '#ccc', fontSize: 13, fontWeight: 'bold' }}
+            >
+              {chartData.map((entry, i) => (
+                <Cell
+                  key={i}
+                  fill={entry.day === today ? '#22d3ee' : '#0891b2'}
+                  fillOpacity={entry.day === today ? 1 : 0.7}
+                />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       {/* Data management */}
-      <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-700 space-y-4">
-        <div className="text-sm text-neutral-400 uppercase tracking-widest font-semibold">Data</div>
+      <div className="bg-neutral-850 rounded-2xl p-5 border-2 border-neutral-700 space-y-4">
+        <div className="text-base text-white uppercase tracking-widest font-bold">Data</div>
         <div className="flex gap-3">
           <button
             onClick={handleExport}
-            className="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 text-white rounded-xl py-4 text-base font-semibold transition-all active:scale-[0.98]"
+            className="flex-1 bg-neutral-800 hover:bg-neutral-700 border-2 border-neutral-600 text-white rounded-xl py-4 text-lg font-bold transition-all active:scale-[0.98]"
           >
             Export
           </button>
           <button
             onClick={() => fileRef.current?.click()}
             disabled={importing}
-            className="flex-1 bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 text-white rounded-xl py-4 text-base font-semibold transition-all active:scale-[0.98] disabled:opacity-50"
+            className="flex-1 bg-neutral-800 hover:bg-neutral-700 border-2 border-neutral-600 text-white rounded-xl py-4 text-lg font-bold transition-all active:scale-[0.98] disabled:opacity-50"
           >
             {importing ? 'Importing...' : 'Import'}
           </button>

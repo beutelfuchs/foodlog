@@ -15,15 +15,15 @@ const tabs = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900/95 backdrop-blur-md border-t border-neutral-700 flex justify-around items-center h-16 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900/95 backdrop-blur-md border-t-2 border-neutral-700 flex justify-around items-center h-16 z-50">
       {tabs.map((tab) => (
         <NavLink
           key={tab.to}
           to={tab.to}
           end={tab.to === '/'}
           className={({ isActive }) =>
-            `flex flex-col items-center justify-center flex-1 h-full text-xs font-semibold tracking-wider uppercase transition-all duration-200 ${
-              isActive ? 'text-cyan-400' : 'text-neutral-500 active:text-neutral-300'
+            `flex flex-col items-center justify-center flex-1 h-full text-sm font-bold tracking-wider uppercase transition-all duration-200 ${
+              isActive ? 'text-cyan-400' : 'text-neutral-300 active:text-white'
             }`
           }
         >
