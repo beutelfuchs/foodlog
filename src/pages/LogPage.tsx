@@ -404,10 +404,13 @@ export default function LogPage({ showToast }: LogPageProps) {
                   onClick={() => removeExercise(ex)}
                   className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/40 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-bold active:scale-95 transition-transform"
                 >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/>
-                    <circle cx="15" cy="4" r="1" fill="currentColor" stroke="none"/>
-                    <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
+            <svg width="14" height="14" viewBox="0 0 100 100" fill="currentColor">
+                    <circle cx="22" cy="72" r="18" fill="none" stroke="currentColor" strokeWidth="11"/>
+                    <circle cx="78" cy="72" r="18" fill="none" stroke="currentColor" strokeWidth="11"/>
+                    <circle cx="68" cy="22" r="9"/>
+                    <path d="M58 35 C45 40, 35 52, 28 65" fill="none" stroke="currentColor" strokeWidth="11" strokeLinecap="round"/>
+                    <path d="M58 35 L68 35 C72 35, 74 37, 75 40 L82 65" fill="none" stroke="currentColor" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M38 58 L62 58 L78 72" fill="none" stroke="currentColor" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   <span>−{ex.kcal}</span>
                 </button>
@@ -530,20 +533,23 @@ export default function LogPage({ showToast }: LogPageProps) {
             onClick={() => setExerciseInput(true)}
             className="bg-emerald-500 active:bg-emerald-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-90 transition-all"
           >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/>
-              <circle cx="15" cy="4" r="1" fill="black" stroke="none"/>
-              <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
+            <svg width="28" height="28" viewBox="0 0 100 100" fill="black">
+              <circle cx="22" cy="72" r="18" fill="none" stroke="black" strokeWidth="9"/>
+              <circle cx="78" cy="72" r="18" fill="none" stroke="black" strokeWidth="9"/>
+              <circle cx="68" cy="22" r="9"/>
+              <path d="M58 35 C45 40, 35 52, 28 65" fill="none" stroke="black" strokeWidth="10" strokeLinecap="round"/>
+              <path d="M58 35 L68 35 C72 35, 74 37, 75 40 L82 65" fill="none" stroke="black" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M38 58 L62 58 L78 72" fill="none" stroke="black" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
           <button
             onClick={() => setCatalogueOpen(true)}
             className="bg-cyan-500 active:bg-cyan-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-cyan-500/30 active:scale-90 transition-all"
           >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 5-2.55 5-6.5 0-4.95-5-8.5-9-12.5-4 4-9 7.55-9 12.5C3 19.45 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"/>
-              <path d="M10 2c1 .5 2 2 2 5"/>
-              <path d="M14 2c-1 .5-2 2-2 5"/>
+            <svg width="26" height="26" viewBox="0 0 100 100" fill="black">
+              <path d="M50 10 L50 25" stroke="black" strokeWidth="5" strokeLinecap="round" fill="none"/>
+              <path d="M52 15 C60 5, 72 8, 70 18 C68 24, 58 22, 52 15Z"/>
+              <path d="M50 28 C35 28, 15 38, 15 62 C15 82, 30 95, 42 95 C47 95, 49 91, 50 91 C51 91, 53 95, 58 95 C70 95, 85 82, 85 62 C85 38, 65 28, 50 28Z"/>
             </svg>
           </button>
         </div>
