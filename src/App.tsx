@@ -96,7 +96,7 @@ export function App() {
       async function loadSharedImage(filePath: string) {
         try {
           // Read the file from Android's cache dir via Capacitor's file serving
-          const { Filesystem, Directory } = await import('@capacitor/filesystem');
+          const { Filesystem } = await import('@capacitor/filesystem');
           const result = await Filesystem.readFile({ path: filePath });
           // result.data is base64
           const base64 = result.data as string;

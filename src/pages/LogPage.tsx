@@ -173,7 +173,7 @@ export default function LogPage({ showToast }: LogPageProps) {
   // Yesterday entries for today header
   const yesterdayKey = dayKeyFor(subDays(new Date(), 1));
   const yesterdayEntries = useLiveQuery(
-    () => isViewingToday ? db.logEntries.where('dayKey').equals(yesterdayKey).toArray() : Promise.resolve([]),
+    () => isViewingToday ? db.logEntries.where('dayKey').equals(yesterdayKey).toArray() : Promise.resolve([] as LogEntry[]),
     [yesterdayKey, isViewingToday]
   );
 

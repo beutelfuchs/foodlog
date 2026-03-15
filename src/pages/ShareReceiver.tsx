@@ -40,11 +40,6 @@ export default function ShareReceiver({ sharedImage, setSharedImage, showToast }
     navigate('/', { replace: true });
   }
 
-  function cancel() {
-    setSharedImage(null);
-    navigate('/', { replace: true });
-  }
-
   if (!sharedImage) return null;
 
   return (
