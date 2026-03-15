@@ -405,12 +405,11 @@ export default function LogPage({ showToast }: LogPageProps) {
                   className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/40 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-bold active:scale-95 transition-transform"
                 >
             <svg width="14" height="14" viewBox="0 0 100 100" fill="currentColor">
-                    <circle cx="22" cy="72" r="18" fill="none" stroke="currentColor" strokeWidth="11"/>
-                    <circle cx="78" cy="72" r="18" fill="none" stroke="currentColor" strokeWidth="11"/>
-                    <circle cx="68" cy="22" r="9"/>
-                    <path d="M58 35 C45 40, 35 52, 28 65" fill="none" stroke="currentColor" strokeWidth="11" strokeLinecap="round"/>
-                    <path d="M58 35 L68 35 C72 35, 74 37, 75 40 L82 65" fill="none" stroke="currentColor" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M38 58 L62 58 L78 72" fill="none" stroke="currentColor" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="62" cy="12" r="10"/>
+                    <path d="M45 30 L65 28 L72 50 L58 48 L52 72 L68 95" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M52 72 L35 95" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round"/>
+                    <path d="M65 28 L80 18" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+                    <path d="M45 30 L25 22" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
                   </svg>
                   <span>−{ex.kcal}</span>
                 </button>
@@ -534,12 +533,11 @@ export default function LogPage({ showToast }: LogPageProps) {
             className="bg-emerald-500 active:bg-emerald-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-90 transition-all"
           >
             <svg width="28" height="28" viewBox="0 0 100 100" fill="black">
-              <circle cx="22" cy="72" r="18" fill="none" stroke="black" strokeWidth="9"/>
-              <circle cx="78" cy="72" r="18" fill="none" stroke="black" strokeWidth="9"/>
-              <circle cx="68" cy="22" r="9"/>
-              <path d="M58 35 C45 40, 35 52, 28 65" fill="none" stroke="black" strokeWidth="10" strokeLinecap="round"/>
-              <path d="M58 35 L68 35 C72 35, 74 37, 75 40 L82 65" fill="none" stroke="black" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M38 58 L62 58 L78 72" fill="none" stroke="black" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="62" cy="12" r="10"/>
+              <path d="M45 30 L65 28 L72 50 L58 48 L52 72 L68 95" fill="none" stroke="black" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M52 72 L35 95" fill="none" stroke="black" strokeWidth="10" strokeLinecap="round"/>
+              <path d="M65 28 L80 18" fill="none" stroke="black" strokeWidth="8" strokeLinecap="round"/>
+              <path d="M45 30 L25 22" fill="none" stroke="black" strokeWidth="8" strokeLinecap="round"/>
             </svg>
           </button>
           <button
@@ -547,9 +545,11 @@ export default function LogPage({ showToast }: LogPageProps) {
             className="bg-cyan-500 active:bg-cyan-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-cyan-500/30 active:scale-90 transition-all"
           >
             <svg width="26" height="26" viewBox="0 0 100 100" fill="black">
-              <path d="M50 10 L50 25" stroke="black" strokeWidth="5" strokeLinecap="round" fill="none"/>
-              <path d="M52 15 C60 5, 72 8, 70 18 C68 24, 58 22, 52 15Z"/>
-              <path d="M50 28 C35 28, 15 38, 15 62 C15 82, 30 95, 42 95 C47 95, 49 91, 50 91 C51 91, 53 95, 58 95 C70 95, 85 82, 85 62 C85 38, 65 28, 50 28Z"/>
+              <path d="M15 45 C15 20, 85 20, 85 45 Z"/>
+              <rect x="12" y="48" width="76" height="10" rx="2"/>
+              <path d="M18 61 C25 67, 35 63, 42 67 C49 71, 55 63, 62 67 C69 71, 75 63, 82 67 L82 61 Z"/>
+              <rect x="12" y="70" width="76" height="10" rx="2"/>
+              <path d="M15 83 C15 93, 85 93, 85 83 Z"/>
             </svg>
           </button>
         </div>
