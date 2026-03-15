@@ -404,12 +404,8 @@ export default function LogPage({ showToast }: LogPageProps) {
                   onClick={() => removeExercise(ex)}
                   className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/40 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-bold active:scale-95 transition-transform"
                 >
-            <svg width="14" height="14" viewBox="0 0 100 100" fill="currentColor">
-                    <circle cx="62" cy="12" r="10"/>
-                    <path d="M45 30 L65 28 L72 50 L58 48 L52 72 L68 95" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M52 72 L35 95" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round"/>
-                    <path d="M65 28 L80 18" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
-                    <path d="M45 30 L25 22" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13.5,5.5C14.59,5.5 15.5,4.58 15.5,3.5C15.5,2.38 14.59,1.5 13.5,1.5C12.39,1.5 11.5,2.38 11.5,3.5C11.5,4.58 12.39,5.5 13.5,5.5M9.89,19.38L10.89,15L13,17V23H15V15.5L12.89,13.5L13.5,10.5C14.79,12 16.79,13 19,13V11C17.09,11 15.5,10 14.69,8.58L13.69,7C13.29,6.38 12.69,6 12,6C11.69,6 11.5,6.08 11.19,6.08L6,8.28V13H8V9.58L9.79,8.88L8.19,17L3.29,16L2.89,18L9.89,19.38Z"/>
                   </svg>
                   <span>−{ex.kcal}</span>
                 </button>
@@ -532,24 +528,16 @@ export default function LogPage({ showToast }: LogPageProps) {
             onClick={() => setExerciseInput(true)}
             className="bg-emerald-500 active:bg-emerald-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-90 transition-all"
           >
-            <svg width="28" height="28" viewBox="0 0 100 100" fill="black">
-              <circle cx="62" cy="12" r="10"/>
-              <path d="M45 30 L65 28 L72 50 L58 48 L52 72 L68 95" fill="none" stroke="black" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M52 72 L35 95" fill="none" stroke="black" strokeWidth="10" strokeLinecap="round"/>
-              <path d="M65 28 L80 18" fill="none" stroke="black" strokeWidth="8" strokeLinecap="round"/>
-              <path d="M45 30 L25 22" fill="none" stroke="black" strokeWidth="8" strokeLinecap="round"/>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="black">
+              <path d="M13.5,5.5C14.59,5.5 15.5,4.58 15.5,3.5C15.5,2.38 14.59,1.5 13.5,1.5C12.39,1.5 11.5,2.38 11.5,3.5C11.5,4.58 12.39,5.5 13.5,5.5M9.89,19.38L10.89,15L13,17V23H15V15.5L12.89,13.5L13.5,10.5C14.79,12 16.79,13 19,13V11C17.09,11 15.5,10 14.69,8.58L13.69,7C13.29,6.38 12.69,6 12,6C11.69,6 11.5,6.08 11.19,6.08L6,8.28V13H8V9.58L9.79,8.88L8.19,17L3.29,16L2.89,18L9.89,19.38Z"/>
             </svg>
           </button>
           <button
             onClick={() => setCatalogueOpen(true)}
             className="bg-cyan-500 active:bg-cyan-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-cyan-500/30 active:scale-90 transition-all"
           >
-            <svg width="26" height="26" viewBox="0 0 100 100" fill="black">
-              <path d="M15 45 C15 20, 85 20, 85 45 Z"/>
-              <rect x="12" y="48" width="76" height="10" rx="2"/>
-              <path d="M18 61 C25 67, 35 63, 42 67 C49 71, 55 63, 62 67 C69 71, 75 63, 82 67 L82 61 Z"/>
-              <rect x="12" y="70" width="76" height="10" rx="2"/>
-              <path d="M15 83 C15 93, 85 93, 85 83 Z"/>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="black">
+              <path d="M22 13C22 14.11 21.11 15 20 15H4C2.9 15 2 14.11 2 13S2.9 11 4 11H13L15.5 13L18 11H20C21.11 11 22 11.9 22 13M12 3C3 3 3 9 3 9H21C21 9 21 3 12 3M3 18C3 19.66 4.34 21 6 21H18C19.66 21 21 19.66 21 18V17H3V18Z"/>
             </svg>
           </button>
         </div>
