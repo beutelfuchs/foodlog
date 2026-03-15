@@ -404,10 +404,10 @@ export default function LogPage({ showToast }: LogPageProps) {
                   onClick={() => removeExercise(ex)}
                   className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/40 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-bold active:scale-95 transition-transform"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/>
-                    <path d="M12 18l-2-6h4l2-4"/><path d="M10 12l-5 6"/><path d="M14 12l5 6"/>
-                    <circle cx="14" cy="4" r="2"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/>
+                    <circle cx="15" cy="4" r="1" fill="currentColor" stroke="none"/>
+                    <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
                   </svg>
                   <span>−{ex.kcal}</span>
                 </button>
@@ -531,9 +531,9 @@ export default function LogPage({ showToast }: LogPageProps) {
             className="bg-emerald-500 active:bg-emerald-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-90 transition-all"
           >
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/>
-              <path d="M12 18l-2-6h4l2-4"/><path d="M10 12l-5 6"/><path d="M14 12l5 6"/>
-              <circle cx="14" cy="4" r="2"/>
+              <circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/>
+              <circle cx="15" cy="4" r="1" fill="black" stroke="none"/>
+              <path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
             </svg>
           </button>
           <button
@@ -541,9 +541,9 @@ export default function LogPage({ showToast }: LogPageProps) {
             className="bg-cyan-500 active:bg-cyan-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-cyan-500/30 active:scale-90 transition-all"
           >
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 8c-1-3-3-5-5-5S8 3 8 3c0 4-4 6-4 10a8 8 0 0016 0c0-2-1-3.5-3-5z"/>
-              <path d="M14 4c-1 1-2 1-4 0"/>
-              <path d="M12 21a4 4 0 01-4-4c0-2 2-4 4-6 2 2 4 4 4 6a4 4 0 01-4 4z"/>
+              <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 5-2.55 5-6.5 0-4.95-5-8.5-9-12.5-4 4-9 7.55-9 12.5C3 19.45 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"/>
+              <path d="M10 2c1 .5 2 2 2 5"/>
+              <path d="M14 2c-1 .5-2 2-2 5"/>
             </svg>
           </button>
         </div>
