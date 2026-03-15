@@ -13,3 +13,10 @@ export interface LogEntry {
   timestamp: number;
   dayKey: string;
 }
+
+export interface ExerciseEntry {
+  id?: number;
+  kcal: number;
+  timestamp: number;
+  dayKey: string;
+}

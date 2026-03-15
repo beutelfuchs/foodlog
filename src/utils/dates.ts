@@ -17,7 +17,7 @@ export function lastNDays(n: number): string[] {
 }
 
 export function dayLabel(dayKey: string): string {
-  return format(new Date(dayKey + 'T00:00:00'), 'EEE d');
+  return format(new Date(dayKey + 'T00:00:00'), 'EEE');
 }
 
 export function timestampToday(): number {

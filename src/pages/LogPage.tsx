@@ -5,7 +5,7 @@ import { db } from '../db';
 import { todayKey, dayKeyFor } from '../utils/dates';
 import { blobToUrl } from '../utils/imageUtils';
 import { subDays, format } from 'date-fns';
-import type { FoodItem, LogEntry } from '../models';
+import type { FoodItem, LogEntry, ExerciseEntry } from '../models';
 import FoodCard from '../components/FoodCard';
 import FoodForm from '../components/FoodForm';
 
@@ -52,6 +52,8 @@ export default function LogPage({ showToast }: LogPageProps) {
   const [adding, setAdding] = useState(false);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [activeEditId, setActiveEditId] = useState<number | null>(null);
+  const [exerciseInput, setExerciseInput] = useState(false);
+  const [exerciseKcalValue, setExerciseKcalValue] = useState('');
   const editSnapshotRef = useRef<LogEntry[]>([]);
   const [highlightId, setHighlightId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -87,8 +89,8 @@ export default function LogPage({ showToast }: LogPageProps) {
   }
 
   // Use a ref so back handler always reads the latest state (no stale closures)
-  const overlayStateRef = useRef({ adding: false, editing: null as FoodItem | null, catalogueOpen: false, isViewingToday: true, activeEditId: null as number | null, pastEditing: false });
-  overlayStateRef.current = { adding, editing, catalogueOpen, isViewingToday, activeEditId, pastEditing };
+  const overlayStateRef = useRef({ adding: false, editing: null as FoodItem | null, catalogueOpen: false, exerciseInput: false, isViewingToday: true, activeEditId: null as number | null, pastEditing: false });
+  overlayStateRef.current = { adding, editing, catalogueOpen, exerciseInput, isViewingToday, activeEditId, pastEditing };
 
   // Close the topmost overlay/state layer; returns true if something was closed
   function closeTopLayer() {
@@ -98,6 +100,11 @@ export default function LogPage({ showToast }: LogPageProps) {
       setEditing(null);
       s.adding = false;
       s.editing = null;
+      return true;
+    }
+    if (s.exerciseInput) {
+      setExerciseInput(false);
+      s.exerciseInput = false;
       return true;
     }
     if (s.catalogueOpen) {
@@ -188,7 +195,15 @@ export default function LogPage({ showToast }: LogPageProps) {
     });
   })();
 
+  // Exercise entries for viewed day
+  const exerciseEntries = useLiveQuery(
+    () => db.exerciseEntries.where('dayKey').equals(viewDayKey).toArray(),
+    [viewDayKey]
+  );
+
   const totalKcal = viewEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
+  const totalExerciseKcal = exerciseEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
+  const netKcal = totalKcal - totalExerciseKcal;
   const yesterdayKcal = yesterdayEntries?.reduce((sum, e) => sum + e.kcal, 0) ?? 0;
 
   const grouped: GroupedEntry[] = (() => {
@@ -262,6 +277,23 @@ export default function LogPage({ showToast }: LogPageProps) {
     }
   }, [dayOffset, navigate, pastEditing, activeEditId]);
 
+  async function logExercise() {
+    const kcal = parseInt(exerciseKcalValue);
+    if (!kcal || kcal <= 0) return;
+    await db.exerciseEntries.add({
+      kcal,
+      timestamp: Date.now(),
+      dayKey: viewDayKey,
+    });
+    setExerciseKcalValue('');
+    setExerciseInput(false);
+    showToast(`−${kcal} kcal exercise`);
+  }
+
+  async function removeExercise(entry: ExerciseEntry) {
+    if (entry.id) await db.exerciseEntries.delete(entry.id);
+  }
+
   async function logFood(item: FoodItem) {
     await db.logEntries.add({
       foodItemId: item.id!,
@@ -269,6 +301,8 @@ export default function LogPage({ showToast }: LogPageProps) {
       timestamp: Date.now(),
       dayKey: viewDayKey,
     });
+    // Move to end of stable order so it appears last in the log
+    stableOrderRef.current = [...stableOrderRef.current.filter((id) => id !== item.id!), item.id!];
     setCatalogueOpen(false);
     setHighlightId(item.id!);
     requestAnimationFrame(() => {
@@ -360,6 +394,27 @@ export default function LogPage({ showToast }: LogPageProps) {
               <span className="text-neutral-500">yesterday </span><span className="font-bold">{yesterdayKcal}</span>
             </div>
           </div>
+
+          {/* Exercise entries */}
+          {totalExerciseKcal > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {exerciseEntries?.map((ex) => (
+                <button
+                  key={ex.id}
+                  onClick={() => removeExercise(ex)}
+                  className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/40 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-bold active:scale-95 transition-transform"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/>
+                    <path d="M12 18l-2-6h4l2-4"/><path d="M10 12l-5 6"/><path d="M14 12l5 6"/>
+                    <circle cx="14" cy="4" r="2"/>
+                  </svg>
+                  <span>−{ex.kcal}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="h-px bg-neutral-700" />
         </>
       ) : (
@@ -375,7 +430,9 @@ export default function LogPage({ showToast }: LogPageProps) {
             </button>
             <div className="text-center min-w-0">
               <div className="text-white font-bold truncate">{viewDayLabel()}</div>
-              <div className="text-cyan-400 font-bold tabular-nums text-sm">{totalKcal} kcal</div>
+              <div className="text-cyan-400 font-bold tabular-nums text-sm">
+                {totalKcal}{totalExerciseKcal > 0 && <span className="text-emerald-400"> − {totalExerciseKcal}</span>}{totalExerciseKcal > 0 && <span className="text-white"> = {netKcal}</span>} kcal
+              </div>
             </div>
             <button
               onClick={() => setPastEditing(!pastEditing)}
@@ -416,14 +473,80 @@ export default function LogPage({ showToast }: LogPageProps) {
         </div>
       )}
 
-      {/* FAB — open catalogue (only when editing is allowed) */}
+      {/* Net kcal footer */}
+      {(totalExerciseKcal > 0 || hasRealEntries) && (
+        <div className="rounded-xl bg-neutral-850 border-2 border-neutral-700 p-3">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-neutral-400">Food</span>
+            <span className="text-white font-bold tabular-nums">{totalKcal}</span>
+          </div>
+          {totalExerciseKcal > 0 && (
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-neutral-400">Exercise</span>
+              <span className="text-emerald-400 font-bold tabular-nums">−{totalExerciseKcal}</span>
+            </div>
+          )}
+          {totalExerciseKcal > 0 && (
+            <>
+              <div className="h-px bg-neutral-700 my-1" />
+              <div className="flex justify-between items-center">
+                <span className="text-neutral-400 text-sm">Net</span>
+                <span className="text-cyan-400 font-bold text-lg tabular-nums">{netKcal}</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Exercise input popup */}
+      {exerciseInput && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={() => setExerciseInput(false)}>
+          <div className="bg-neutral-850 border-2 border-neutral-700 rounded-2xl p-6 mx-8 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="text-lg font-bold text-white">Log exercise</div>
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="kcal burned"
+              value={exerciseKcalValue}
+              onChange={(e) => setExerciseKcalValue(e.target.value)}
+              autoFocus
+              className="w-full bg-neutral-800 border-2 border-neutral-600 rounded-xl px-4 py-3 text-white text-lg font-bold focus:border-emerald-500 outline-none"
+            />
+            <button
+              onClick={logExercise}
+              disabled={!exerciseKcalValue || parseInt(exerciseKcalValue) <= 0}
+              className="w-full bg-emerald-500 text-black font-bold text-lg rounded-xl py-3 active:scale-[0.97] transition-transform disabled:opacity-40"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FABs — food (apple) and exercise (bike) */}
       {canEdit && (
-        <button
-          onClick={() => setCatalogueOpen(true)}
-          className="fixed bottom-20 right-4 bg-cyan-500 active:bg-cyan-400 text-black rounded-full w-14 h-14 flex items-center justify-center text-3xl font-light shadow-lg shadow-cyan-500/30 active:scale-90 transition-all z-40"
-        >
-          +
-        </button>
+        <div className="fixed bottom-20 right-4 flex flex-col gap-3 z-40">
+          <button
+            onClick={() => setExerciseInput(true)}
+            className="bg-emerald-500 active:bg-emerald-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-90 transition-all"
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/>
+              <path d="M12 18l-2-6h4l2-4"/><path d="M10 12l-5 6"/><path d="M14 12l5 6"/>
+              <circle cx="14" cy="4" r="2"/>
+            </svg>
+          </button>
+          <button
+            onClick={() => setCatalogueOpen(true)}
+            className="bg-cyan-500 active:bg-cyan-400 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-cyan-500/30 active:scale-90 transition-all"
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 8c-1-3-3-5-5-5S8 3 8 3c0 4-4 6-4 10a8 8 0 0016 0c0-2-1-3.5-3-5z"/>
+              <path d="M14 4c-1 1-2 1-4 0"/>
+              <path d="M12 21a4 4 0 01-4-4c0-2 2-4 4-6 2 2 4 4 4 6a4 4 0 01-4 4z"/>
+            </svg>
+          </button>
+        </div>
       )}
 
       {/* Catalogue popup */}

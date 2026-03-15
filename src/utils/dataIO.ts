@@ -2,13 +2,14 @@ import { db } from '../db';
 import type { Setting } from '../db';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import type { FoodItem, LogEntry } from '../models';
+import type { FoodItem, LogEntry, ExerciseEntry } from '../models';
 
 interface ExportData {
   version: 1;
   exportedAt: string;
   foodItems: (Omit<FoodItem, 'image'> & { image?: string })[];
   logEntries: LogEntry[];
+  exerciseEntries?: ExerciseEntry[];
   settings?: Setting[];
 }
 
@@ -40,6 +41,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 export async function exportData(): Promise<void> {
   const foodItems = await db.foodItems.toArray();
   const logEntries = await db.logEntries.toArray();
+  const exerciseEntries = await db.exerciseEntries.toArray();
   const settings = await db.settings.toArray();
 
   const serializedFoods = await Promise.all(
@@ -57,6 +59,7 @@ export async function exportData(): Promise<void> {
     exportedAt: new Date().toISOString(),
     foodItems: serializedFoods,
     logEntries,
+    exerciseEntries,
     settings,
   };
 
@@ -96,9 +99,10 @@ export async function importData(file: File): Promise<{ foods: number; entries: 
   if (data.version !== 1) throw new Error('Unsupported export version');
 
   // Clear existing data
-  await db.transaction('rw', db.foodItems, db.logEntries, db.settings, async () => {
+  await db.transaction('rw', db.foodItems, db.logEntries, db.exerciseEntries, db.settings, async () => {
     await db.foodItems.clear();
     await db.logEntries.clear();
+    await db.exerciseEntries.clear();
     await db.settings.clear();
 
     // Import food items, mapping old IDs to new IDs
@@ -117,6 +121,14 @@ export async function importData(file: File): Promise<{ foods: number; entries: 
       const { id, ...rest } = entry;
       const mappedFoodId = idMap.get(rest.foodItemId) ?? rest.foodItemId;
       await db.logEntries.add({ ...rest, foodItemId: mappedFoodId });
+    }
+
+    // Import exercise entries
+    if (data.exerciseEntries) {
+      for (const entry of data.exerciseEntries) {
+        const { id, ...rest } = entry;
+        await db.exerciseEntries.add(rest);
+      }
     }
 
     // Import settings
