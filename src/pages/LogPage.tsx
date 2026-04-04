@@ -295,6 +295,8 @@ export default function LogPage({ showToast }: LogPageProps) {
   }
 
   async function logFood(item: FoodItem) {
+    // Check if this is the first entry for this food today
+    const isFirst = !viewEntriesRef.current.some((e) => e.foodItemId === item.id!);
     await db.logEntries.add({
       foodItemId: item.id!,
       kcal: item.kcal,
@@ -304,11 +306,17 @@ export default function LogPage({ showToast }: LogPageProps) {
     // Move to end of stable order so it appears last in the log
     stableOrderRef.current = [...stableOrderRef.current.filter((id) => id !== item.id!), item.id!];
     setCatalogueOpen(false);
-    setHighlightId(item.id!);
+    if (isFirst) {
+      // First time today — go straight into quantity edit mode
+      editSnapshotRef.current = [];
+      setActiveEditId(item.id!);
+    } else {
+      setHighlightId(item.id!);
+      setTimeout(() => setHighlightId(null), 2000);
+    }
     requestAnimationFrame(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     });
-    setTimeout(() => setHighlightId(null), 2000);
   }
 
   async function addOne(group: GroupedEntry) {
@@ -635,11 +643,13 @@ function LogRow({
     return () => clearTimeout(dismissTimer.current);
   }, [mode]);
 
-  // Reset to idle when disabled or parent deactivates; kill any pending long-press
+  // Sync mode with parent-driven activation/deactivation
   useEffect(() => {
     if (disabled || isActive === false) {
       setMode('idle');
       clearTimeout(longPressTimer.current);
+    } else if (isActive) {
+      setMode('active');
     }
   }, [disabled, isActive]);
 
