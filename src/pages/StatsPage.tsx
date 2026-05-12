@@ -1,10 +1,19 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ComposedChart, Bar, Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
 import { db } from '../db';
 import { lastNDays, dayLabel, todayKey, dayKeyFor } from '../utils/dates';
-import { exportData, importData } from '../utils/dataIO';
+import {
+  exportCatalogue,
+  exportLog,
+  importCatalogue,
+  importLog,
+  resetCatalogue,
+  resetLog,
+} from '../utils/dataIO';
 import { startOfWeek, subDays } from 'date-fns';
+
+type DataKind = 'log' | 'catalogue';
 
 const CHART_DAYS = 7;
 const SMA_LOOKBACK = 14;
@@ -14,10 +23,19 @@ export default function StatsPage() {
   const chartDays = lastNDays(CHART_DAYS);
   const allDays = lastNDays(CHART_DAYS + SMA_LOOKBACK);
   const today = todayKey();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
+  const logFileRef = useRef<HTMLInputElement>(null);
+  const catFileRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState<DataKind | null>(null);
+  const [resetConfirm, setResetConfirm] = useState<DataKind | null>(null);
   const [message, setMessage] = useState('');
   const [showNet, setShowNet] = useState(false);
+
+  // Auto-cancel reset confirmation after 3s
+  useEffect(() => {
+    if (!resetConfirm) return;
+    const t = setTimeout(() => setResetConfirm(null), 3000);
+    return () => clearTimeout(t);
+  }, [resetConfirm]);
 
   const foodEntries = useLiveQuery(
     () => db.logEntries.where('dayKey').anyOf(allDays).toArray(),
@@ -96,29 +114,57 @@ export default function StatsPage() {
   const avg7 = Math.round(chartData.reduce((s, d) => s + d.kcal, 0) / CHART_DAYS);
   const trend = thisWeekKcal > lastWeekKcal ? 'up' : thisWeekKcal < lastWeekKcal ? 'down' : 'flat';
 
-  async function handleExport() {
-    try {
-      await exportData();
-      setMessage('Exported!');
-    } catch {
-      setMessage('Export failed');
-    }
-    setTimeout(() => setMessage(''), 2000);
+  function flashMessage(text: string, ms = 2000) {
+    setMessage(text);
+    setTimeout(() => setMessage(''), ms);
   }
 
-  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleExport(kind: DataKind) {
+    try {
+      if (kind === 'log') await exportLog();
+      else await exportCatalogue();
+      flashMessage(kind === 'log' ? 'Log exported' : 'Catalogue exported');
+    } catch {
+      flashMessage(`${kind === 'log' ? 'Log' : 'Catalogue'} export failed`);
+    }
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>, kind: DataKind) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImporting(true);
+    setImporting(kind);
     try {
-      const result = await importData(file);
-      setMessage(`Imported ${result.foods} foods, ${result.entries} entries`);
+      if (kind === 'log') {
+        const r = await importLog(file);
+        flashMessage(`Imported ${r.entries} entries, ${r.exercises} exercises`, 3000);
+      } else {
+        const r = await importCatalogue(file);
+        flashMessage(`Imported ${r.foods} foods`, 3000);
+      }
     } catch {
-      setMessage('Import failed — invalid file');
+      flashMessage(`${kind === 'log' ? 'Log' : 'Catalogue'} import failed — invalid file`, 3000);
     }
-    setImporting(false);
+    setImporting(null);
     e.target.value = '';
-    setTimeout(() => setMessage(''), 3000);
+  }
+
+  async function handleReset(kind: DataKind) {
+    if (resetConfirm !== kind) {
+      setResetConfirm(kind);
+      return;
+    }
+    setResetConfirm(null);
+    try {
+      if (kind === 'log') {
+        await resetLog();
+        flashMessage('Log cleared');
+      } else {
+        await resetCatalogue();
+        flashMessage('Catalogue cleared');
+      }
+    } catch {
+      flashMessage('Reset failed');
+    }
   }
 
   return (
@@ -215,34 +261,89 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {/* Data — compact row */}
-      <div className="flex gap-3">
-        <button
-          onClick={handleExport}
-          className="flex-1 bg-neutral-850 border-2 border-neutral-700 text-white rounded-xl py-3 text-base font-bold active:scale-[0.98] transition-all"
-        >
-          Export
-        </button>
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={importing}
-          className="flex-1 bg-neutral-850 border-2 border-neutral-700 text-white rounded-xl py-3 text-base font-bold active:scale-[0.98] transition-all disabled:opacity-50"
-        >
-          {importing ? '...' : 'Import'}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json"
-          onChange={handleImportFile}
-          className="hidden"
-        />
-      </div>
+      {/* Data — separate sections for log and catalogue */}
+      <DataSection
+        label="Food log"
+        importing={importing === 'log'}
+        resetArmed={resetConfirm === 'log'}
+        onExport={() => handleExport('log')}
+        onImport={() => logFileRef.current?.click()}
+        onReset={() => handleReset('log')}
+      />
+      <DataSection
+        label="Catalogue"
+        importing={importing === 'catalogue'}
+        resetArmed={resetConfirm === 'catalogue'}
+        onExport={() => handleExport('catalogue')}
+        onImport={() => catFileRef.current?.click()}
+        onReset={() => handleReset('catalogue')}
+      />
+      <input
+        ref={logFileRef}
+        type="file"
+        accept=".json"
+        onChange={(e) => handleImportFile(e, 'log')}
+        className="hidden"
+      />
+      <input
+        ref={catFileRef}
+        type="file"
+        accept=".json"
+        onChange={(e) => handleImportFile(e, 'catalogue')}
+        className="hidden"
+      />
       {message && (
         <div className="text-base text-cyan-400 text-center font-medium" style={{ animation: 'fade-up 0.2s ease-out' }}>
           {message}
         </div>
       )}
+    </div>
+  );
+}
+
+function DataSection({
+  label,
+  importing,
+  resetArmed,
+  onExport,
+  onImport,
+  onReset,
+}: {
+  label: string;
+  importing: boolean;
+  resetArmed: boolean;
+  onExport: () => void;
+  onImport: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-xs text-neutral-500 uppercase tracking-wider font-bold">{label}</div>
+      <div className="flex gap-2">
+        <button
+          onClick={onExport}
+          className="flex-1 bg-neutral-850 border-2 border-neutral-700 text-white rounded-xl py-3 text-base font-bold active:scale-[0.98] transition-all"
+        >
+          Export
+        </button>
+        <button
+          onClick={onImport}
+          disabled={importing}
+          className="flex-1 bg-neutral-850 border-2 border-neutral-700 text-white rounded-xl py-3 text-base font-bold active:scale-[0.98] transition-all disabled:opacity-50"
+        >
+          {importing ? '...' : 'Import'}
+        </button>
+        <button
+          onClick={onReset}
+          className={`flex-1 rounded-xl py-3 text-base font-bold active:scale-[0.98] transition-all border-2 ${
+            resetArmed
+              ? 'bg-rose-500 border-rose-500 text-black'
+              : 'bg-neutral-850 border-rose-500/40 text-rose-400'
+          }`}
+        >
+          {resetArmed ? 'Confirm?' : 'Reset'}
+        </button>
+      </div>
     </div>
   );
 }

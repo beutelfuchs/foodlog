@@ -1,16 +1,21 @@
 import { db } from '../db';
-import type { Setting } from '../db';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import type { FoodItem, LogEntry, ExerciseEntry } from '../models';
 
-interface ExportData {
+interface CatalogueExport {
   version: 1;
+  type: 'catalogue';
   exportedAt: string;
   foodItems: (Omit<FoodItem, 'image'> & { image?: string })[];
+}
+
+interface LogExport {
+  version: 1;
+  type: 'log';
+  exportedAt: string;
   logEntries: LogEntry[];
-  exerciseEntries?: ExerciseEntry[];
-  settings?: Setting[];
+  exerciseEntries: ExerciseEntry[];
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -38,48 +43,19 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-export async function exportData(): Promise<void> {
-  const foodItems = await db.foodItems.toArray();
-  const logEntries = await db.logEntries.toArray();
-  const exerciseEntries = await db.exerciseEntries.toArray();
-  const settings = await db.settings.toArray();
-
-  const serializedFoods = await Promise.all(
-    foodItems.map(async (item) => {
-      const { image, ...rest } = item;
-      return {
-        ...rest,
-        image: image ? await blobToBase64(image) : undefined,
-      };
-    })
-  );
-
-  const data: ExportData = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    foodItems: serializedFoods,
-    logEntries,
-    exerciseEntries,
-    settings,
-  };
-
+async function shareJSON(data: object, basename: string): Promise<void> {
   const json = JSON.stringify(data);
   const now = new Date();
-  const filename = `foodlog-${now.toISOString().slice(0, 16).replace('T', '_').replace(':', '')}.json`;
+  const filename = `${basename}-${now.toISOString().slice(0, 16).replace('T', '_').replace(':', '')}.json`;
 
   try {
-    // Write to Capacitor filesystem then share via native share sheet
     const base64Data = arrayBufferToBase64(new TextEncoder().encode(json).buffer as ArrayBuffer);
     const result = await Filesystem.writeFile({
       path: filename,
       data: base64Data,
       directory: Directory.Cache,
     });
-
-    await Share.share({
-      title: filename,
-      url: result.uri,
-    });
+    await Share.share({ title: filename, url: result.uri });
   } catch {
     // Fallback for desktop browsers
     const blob = new Blob([json], { type: 'application/json' });
@@ -92,52 +68,92 @@ export async function exportData(): Promise<void> {
   }
 }
 
-export async function importData(file: File): Promise<{ foods: number; entries: number }> {
+export async function exportCatalogue(): Promise<void> {
+  const foodItems = await db.foodItems.toArray();
+  const serialized = await Promise.all(
+    foodItems.map(async (item) => {
+      const { image, ...rest } = item;
+      return { ...rest, image: image ? await blobToBase64(image) : undefined };
+    })
+  );
+  const data: CatalogueExport = {
+    version: 1,
+    type: 'catalogue',
+    exportedAt: new Date().toISOString(),
+    foodItems: serialized,
+  };
+  await shareJSON(data, 'foodlog-catalogue');
+}
+
+export async function exportLog(): Promise<void> {
+  const logEntries = await db.logEntries.toArray();
+  const exerciseEntries = await db.exerciseEntries.toArray();
+  const data: LogExport = {
+    version: 1,
+    type: 'log',
+    exportedAt: new Date().toISOString(),
+    logEntries,
+    exerciseEntries,
+  };
+  await shareJSON(data, 'foodlog-log');
+}
+
+export async function importCatalogue(file: File): Promise<{ foods: number }> {
   const text = await file.text();
-  const data: ExportData = JSON.parse(text);
+  const data = JSON.parse(text);
 
   if (data.version !== 1) throw new Error('Unsupported export version');
+  if (data.type && data.type !== 'catalogue') throw new Error('Not a catalogue export');
+  if (!Array.isArray(data.foodItems)) throw new Error('No catalogue data in file');
 
-  // Clear existing data
-  await db.transaction('rw', db.foodItems, db.logEntries, db.exerciseEntries, db.settings, async () => {
+  // Preserve IDs so existing log entries continue to reference the correct items
+  const items: FoodItem[] = data.foodItems.map((item: CatalogueExport['foodItems'][number]) => {
+    const { image: imageData, ...rest } = item;
+    return { ...rest, image: imageData ? base64ToBlob(imageData) : undefined };
+  });
+
+  await db.transaction('rw', db.foodItems, async () => {
     await db.foodItems.clear();
+    await db.foodItems.bulkPut(items);
+  });
+
+  return { foods: items.length };
+}
+
+export async function importLog(file: File): Promise<{ entries: number; exercises: number }> {
+  const text = await file.text();
+  const data = JSON.parse(text);
+
+  if (data.version !== 1) throw new Error('Unsupported export version');
+  if (data.type && data.type !== 'log') throw new Error('Not a log export');
+  if (!Array.isArray(data.logEntries)) throw new Error('No log data in file');
+
+  const logEntries: LogEntry[] = data.logEntries;
+  const exerciseEntries: ExerciseEntry[] = Array.isArray(data.exerciseEntries) ? data.exerciseEntries : [];
+
+  await db.transaction('rw', db.logEntries, db.exerciseEntries, async () => {
     await db.logEntries.clear();
     await db.exerciseEntries.clear();
-    await db.settings.clear();
-
-    // Import food items, mapping old IDs to new IDs
-    const idMap = new Map<number, number>();
-
-    for (const item of data.foodItems) {
-      const oldId = item.id!;
-      const { id, image: imageData, ...rest } = item;
-      const image = imageData ? base64ToBlob(imageData) : undefined;
-      const newId = await db.foodItems.add({ ...rest, image } as FoodItem);
-      idMap.set(oldId, newId as number);
-    }
-
-    // Import log entries with remapped food IDs
-    for (const entry of data.logEntries) {
+    for (const entry of logEntries) {
       const { id, ...rest } = entry;
-      const mappedFoodId = idMap.get(rest.foodItemId) ?? rest.foodItemId;
-      await db.logEntries.add({ ...rest, foodItemId: mappedFoodId });
+      await db.logEntries.add(rest);
     }
-
-    // Import exercise entries
-    if (data.exerciseEntries) {
-      for (const entry of data.exerciseEntries) {
-        const { id, ...rest } = entry;
-        await db.exerciseEntries.add(rest);
-      }
-    }
-
-    // Import settings
-    if (data.settings) {
-      for (const setting of data.settings) {
-        await db.settings.put(setting);
-      }
+    for (const entry of exerciseEntries) {
+      const { id, ...rest } = entry;
+      await db.exerciseEntries.add(rest);
     }
   });
 
-  return { foods: data.foodItems.length, entries: data.logEntries.length };
+  return { entries: logEntries.length, exercises: exerciseEntries.length };
+}
+
+export async function resetCatalogue(): Promise<void> {
+  await db.foodItems.clear();
+}
+
+export async function resetLog(): Promise<void> {
+  await db.transaction('rw', db.logEntries, db.exerciseEntries, async () => {
+    await db.logEntries.clear();
+    await db.exerciseEntries.clear();
+  });
 }
